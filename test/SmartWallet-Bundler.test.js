@@ -97,20 +97,29 @@ describe('SmartWallet-Bundler-test', function () {
 
     it('bundler executeOp', async function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
-        let opArr = []
+        let bytesArr = []
+        let typeArr = []
         for (let signData of signDataArr) {
             let s = signData
             let callData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
-            opArr.push({
-                toArr: [s.fromWallet],
-                valueArr: [0],
-                dataArr: [callData]
-            })
+            
+            let estimateGas = await subBundler.estimateGas.executeOp([s.fromWallet], [0], [callData])
+            console.log('subBundler estimateGas:', estimateGas)
+
+            let bytes = utils.defaultAbiCoder.encode(
+                ['address[]', 'uint256[]', 'bytes[]'], 
+                [[s.fromWallet], [0], [callData]]
+            )
+
+            console.log('bytes', bytes)
+
+            typeArr.push(true)
+            bytesArr.push(bytes)
         }
 
-        let estimateGas = await bundler.estimateGas.bundleOps(opArr)
-        await bundler.bundleOps(opArr)
-        console.log('bundleOps done gasCost:', estimateGas)
+        let estimateGas = await bundler.estimateGas.bundle(typeArr, bytesArr)
+        await bundler.bundle(typeArr, bytesArr)
+        console.log('bundle done gasCost:', estimateGas)
 
         await print()
     })

@@ -80,6 +80,8 @@ contract SmartWallet is ReentrancyGuard {
             "atomSignCall: Invalid Signature"
         );
 
+        console.log("atomSignCall: check pass");
+
         for (uint8 i = 0; i < toArr.length; i++) {
             (bool success, bytes memory result) = toArr[i].call{
                 value: valueArr[i]
