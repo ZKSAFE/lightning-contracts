@@ -3,23 +3,20 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "./SocialRecovery.sol";
 import "hardhat/console.sol";
 
-contract SmartWallet is ReentrancyGuard {
+contract SmartWallet is ReentrancyGuard, SocialRecovery {
     using ECDSA for bytes32;
 
-    uint32 public valid = 1; //to avoid Double Spent
+    event BundlerChanged(address indexed previousBundler, address indexed newBundler);
 
-    address public owner;
+    uint32 public valid = 1; //to make AtomSign invalid
 
     address public bundler;
 
     mapping(bytes32 => bool) public usedMsgHashes;
-
-    modifier onlyOwner() {
-        require(owner == msg.sender, "onlyOwner: caller is not the owner");
-        _;
-    }
 
     modifier onlyBundler() {
         require(
@@ -28,22 +25,29 @@ contract SmartWallet is ReentrancyGuard {
         );
         _;
     }
-
-
-    constructor(address _owner, address _bundler) {
-        owner = _owner;
+    
+    constructor(address _owner, address _bundler) SocialRecovery(_owner) {
         bundler = _bundler;
     }
 
-
     receive() external payable {}
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return
+            super.supportsInterface(interfaceId) ||
+            interfaceId == this.batchCall.selector
+                ^ this.atomSignCall.selector
+                ^ this.makeAtomSignInvalid.selector;
+    }
 
+    /**
+     * if you're the owner and also the bundler, you can call by youself
+     */
     function batchCall(
         address[] calldata toArr,
         uint[] calldata valueArr,
         bytes[] calldata dataArr
-    ) public onlyOwner onlyBundler {
+    ) public onlyOwnerAndOrignal onlyBundler {
         for (uint i = 0; i < toArr.length; i++) {
             (bool success, bytes memory result) = toArr[i].call{
                 value: valueArr[i]
@@ -57,7 +61,10 @@ contract SmartWallet is ReentrancyGuard {
         }
     }
 
-
+    /**
+     * multiple operations in a sign, with atomic(all successed or all failed)
+     * owner to sign, bundler to call
+     */
     function atomSignCall(
         address[] calldata toArr,
         uint[] calldata valueArr,
@@ -97,8 +104,23 @@ contract SmartWallet is ReentrancyGuard {
         usedMsgHashes[msgHash] = true;
     }
     
-
-    function makeAtomSignInvalid() public onlyOwner {
+    /**
+     * if you signed something then regretted, make it invalid
+     */
+    function makeAtomSignInvalid() public onlyOwnerAndOrignal {
         valid++;
     }
+
+    /**
+     * only owner can change bundler, before that, guardians need to be empty
+     */
+    function changeBundler(address newBundler) external onlyOwnerAndOrignal {
+        require(needGuardiansNum == 0, "changeBundler: let the guardians quit first");
+        
+        address oldBundler = bundler;
+        bundler = newBundler;
+
+        emit BundlerChanged(oldBundler, newBundler);
+    }
+
 }

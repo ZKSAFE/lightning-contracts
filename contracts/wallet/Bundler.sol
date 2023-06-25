@@ -10,22 +10,7 @@ contract Bundler {
 
     SubBundler public subBundler;
 
-    address internal _callTo;
-
     event Error(uint8 i);
-
-    // struct Operation {
-    //     address[] toArr;
-    //     uint[] valueArr;
-    //     bytes[] dataArr;
-    // }
-
-    // struct Flash {
-    //     address poolAddr;
-    //     uint borrowAmount0;
-    //     uint borrowAmount1;
-    //     bytes data;
-    // }
 
     modifier onlyOwner() {
         require(owner == msg.sender, "onlyOwner: caller is not the owner");
@@ -45,14 +30,13 @@ contract Bundler {
             if (typeArr[i]) {
 
                 (
-                    address[] memory toArr,
-                    uint[] memory valueArr,
-                    bytes[] memory dataArr
-                ) = abi.decode(bytesArr[i], (address[], uint[], bytes[]));
+                    address toWallet,
+                    bytes memory data
+                ) = abi.decode(bytesArr[i], (address, bytes));
                 try
-                    subBundler.executeOp(toArr, valueArr, dataArr) returns (uint ethBefore, uint ethAfter)
+                    subBundler.executeOp(toWallet, data)
                 {
-                    console.log("bundle: executeOp", ethBefore, ethAfter);
+                    
                 } catch {
                     emit Error(i);
                 }
@@ -66,10 +50,9 @@ contract Bundler {
                     bytes memory data
                 ) = abi.decode(bytesArr[i], (address, uint, uint, bytes));
                 try
-                    subBundler.executeFlash(poolAddr, borrowAmount0, borrowAmount1, data) returns (uint ethBefore, uint ethAfter)
-                    // (uint ethBefore, uint ethAfter) = subBundler.executeFlash(poolAddr, borrowAmount0, borrowAmount1, data);
+                    subBundler.executeFlash(poolAddr, borrowAmount0, borrowAmount1, data)
                 {
-                    console.log("bundle: executeFlash", ethBefore, ethAfter);
+                    
                 } catch {
                     emit Error(i);
                 }

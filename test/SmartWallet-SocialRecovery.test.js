@@ -2,7 +2,7 @@ const { BigNumber, utils } = require('ethers')
 const snarkjs = require("snarkjs")
 const fs = require("fs")
 
-describe('SmartWallet-SubBundler-test', function () {
+describe('SmartWallet-SocialRecovery-test', function () {
     let accounts
     let provider
     let factory
@@ -44,7 +44,7 @@ describe('SmartWallet-SubBundler-test', function () {
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 
-        let tx = await (await factory.createWallet(accounts[1].address, subBundler.address)).wait()
+        let tx = await (await factory.createWallet(accounts[0].address, subBundler.address)).wait()
         // console.log('tx', tx, { depth: null })
         let walletAddr = tx.events[0].args[0]
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
@@ -56,50 +56,70 @@ describe('SmartWallet-SubBundler-test', function () {
     })
 
 
-    it('deposit', async function () {
-        await accounts[0].sendTransaction({to: subBundler.address, value: m(5, 18)})
-        console.log('transfer ETH to', subBundler.address)
-
-        await usdt.transfer(wallet.address, m(2000, 18))
-        console.log('deposit ERC20 to', wallet.address)
-
-        await print()
-    })
-
-
-    it('account1 atomSign', async function () {
+    it('setSocialRecovery', async function () {
         let callArr = []
         let to = '0x'
         let value = 0
         let data = '0x'
 
-        to = subBundler.address
+        to = wallet.address
         value = 0
-        const SubBundler = await ethers.getContractFactory('SubBundler')
-        data = SubBundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [wallet.address, m(1, 18), []])
+        let guardians = [accounts[0].address, accounts[1].address, accounts[2].address, accounts[3].address]
+        let needGuardiansNum = 2
+        const SmartWallet = await ethers.getContractFactory('SmartWallet')
+        data = SmartWallet.interface.encodeFunctionData('setSocialRecovery(address[],uint256)', [guardians, needGuardiansNum])
         callArr.push({to, value, data})
         
-        to = usdt.address
-        value = 0
-        const ERC = await ethers.getContractFactory('MockERC20')
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [subBundler.address, m(2000, 18)])
-        callArr.push({to, value, data})
-
-        signData = await atomSign(accounts[1], wallet.address, callArr)
+        signData = await atomSign(accounts[0], wallet.address, callArr)
         console.log('atomSign done')
+
+        let s = signData
+        let opData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
+
+        await subBundler.executeOp(wallet.address, opData)
+
+        let sr = await wallet.getSocialRecovery()
+        console.log('getSocialRecovery:', sr)
     })
 
 
-    it('subBundler executeOp', async function () {
-        const SmartWallet = await ethers.getContractFactory('SmartWallet')
-        let s = signData
-        let callData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
+    it('account0 quitGuardian', async function () {
 
-        let estimateGas = await subBundler.estimateGas.executeOp(wallet.address, callData)
-        await subBundler.executeOp(wallet.address, callData)
-        console.log('executeOp done, gasCost:', estimateGas)
+        await wallet.quitGuardian()
+        
+        let sr = await wallet.getSocialRecovery()
+        console.log('getSocialRecovery:', sr)
+    })
 
-        await print()
+
+    it('account1 quitGuardian', async function () {
+
+        await wallet.connect(accounts[1]).quitGuardian()
+        
+        let sr = await wallet.getSocialRecovery()
+        console.log('getSocialRecovery:', sr)
+    })
+
+
+    it('account2 transferOwnership', async function () {
+
+        await wallet.connect(accounts[2]).transferOwnership(accounts[3].address)
+        
+        let sr = await wallet.getSocialRecovery()
+        console.log('getSocialRecovery:', sr)
+
+        console.log('owner:', await wallet.owner())
+    })
+
+
+    it('account3 transferOwnership', async function () {
+
+        await wallet.connect(accounts[3]).transferOwnership(accounts[3].address)
+        
+        let sr = await wallet.getSocialRecovery()
+        console.log('getSocialRecovery:', sr)
+        
+        console.log('owner:', await wallet.owner())
     })
 
 
@@ -131,19 +151,6 @@ describe('SmartWallet-SubBundler-test', function () {
 
         return { toArr, valueArr, dataArr, deadline, chainId, fromWallet, valid, signature }
     }
-
-
-    async function print() {
-        console.log('')
-        
-        console.log('account0 usdt:', d(await usdt.balanceOf(accounts[0].address), 18), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
-        console.log('account1 usdt:', d(await usdt.balanceOf(accounts[1].address), 18), 'eth:', d(await provider.getBalance(accounts[1].address), 18))
-        console.log('subBundler usdt:', d(await usdt.balanceOf(subBundler.address), 18), 'eth:', d(await provider.getBalance(subBundler.address), 18))
-        console.log('wallet usdt:', d(await usdt.balanceOf(wallet.address), 18), 'eth:', d(await provider.getBalance(wallet.address), 18))
-
-        console.log('')
-    }
-
 
     function stringToHex(string) {
         let hexStr = '';

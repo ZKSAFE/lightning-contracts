@@ -5,12 +5,12 @@ const fs = require("fs")
 describe('SmartWallet-Bundler-test', function () {
     let accounts
     let provider
+    let factory
     let walletArr
     let bundler
     let subBundler
     let usdt
-    let check
-    let signDataArr
+    let signedDataArr
 
     before(async function () {
         accounts = await ethers.getSigners()
@@ -24,15 +24,10 @@ describe('SmartWallet-Bundler-test', function () {
         console.log('usdt deployed:', usdt.address)
         await usdt.mint(accounts[0].address, m(100000, 18))
         console.log('usdt mint to accounts[0]', d(await usdt.balanceOf(accounts[0].address), 18))
-
-        const AssetsCheck = await ethers.getContractFactory('AssetsCheck')
-        check = await AssetsCheck.deploy()
-        await check.deployed()
-        console.log('check deployed:', check.address)
     })
 
 
-    it('deploy Bundler SubBundler SmartWallet', async function () {
+    it('deploy Bundler SubBundler WalletFactory SmartWallet', async function () {
         const Bundler = await ethers.getContractFactory('Bundler')
         bundler = await Bundler.deploy()
         await bundler.deployed()
@@ -42,11 +37,17 @@ describe('SmartWallet-Bundler-test', function () {
         subBundler = SubBundler.attach(await bundler.subBundler())
         console.log('subBundler deployed:', subBundler.address)
 
+        const WalletFactory = await ethers.getContractFactory('WalletFactory')
+        factory = await WalletFactory.deploy()
+        await factory.deployed()
+        console.log('factory deployed:', factory.address)
+
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
         walletArr = []
         for (let i=1; i<=5; i++) {
-            let wallet = await SmartWallet.deploy(accounts[i].address, subBundler.address)
-            await wallet.deployed()
+            let tx = await (await factory.createWallet(accounts[i].address, subBundler.address)).wait()
+            let walletAddr = tx.events[0].args[0]
+            let wallet = SmartWallet.attach(walletAddr)
             walletArr.push(wallet)
             console.log('wallet' + i + ' deployed:', wallet.address)
         }
@@ -54,7 +55,7 @@ describe('SmartWallet-Bundler-test', function () {
 
 
     it('deposit', async function () {
-        await accounts[0].sendTransaction({to: subBundler.address, value: m(5, 18)})
+        await accounts[0].sendTransaction({to: subBundler.address, value: m(4, 18)})
         console.log('transfer ETH to', subBundler.address)
 
         for (let wallet of walletArr) {
@@ -67,7 +68,7 @@ describe('SmartWallet-Bundler-test', function () {
 
     
     it('accounts atomSign', async function () {
-        signDataArr = []
+        signedDataArr = []
         for (let wallet of walletArr) {
             let count = walletArr.indexOf(wallet) + 1
 
@@ -79,7 +80,7 @@ describe('SmartWallet-Bundler-test', function () {
             to = subBundler.address
             value = 0
             const SubBundler = await ethers.getContractFactory('SubBundler')
-            data = SubBundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [wallet.address, m(1, 18), []])
+            data = SubBundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [wallet.address, m(1, 18), '0x'])
             callArr.push({to, value, data})
             
             to = usdt.address
@@ -88,8 +89,8 @@ describe('SmartWallet-Bundler-test', function () {
             data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [subBundler.address, m(2000, 18)])
             callArr.push({to, value, data})
 
-            let signData = await atomSign(accounts[count], wallet.address, callArr)
-            signDataArr.push(signData)
+            let signedData = await atomSign(accounts[count], wallet.address, callArr)
+            signedDataArr.push(signedData)
             console.log('wallet' + count + ' atomSign done')
         }
     })
@@ -99,19 +100,17 @@ describe('SmartWallet-Bundler-test', function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
         let bytesArr = []
         let typeArr = []
-        for (let signData of signDataArr) {
-            let s = signData
+        for (let signedData of signedDataArr) {
+            let s = signedData
             let callData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
             
-            let estimateGas = await subBundler.estimateGas.executeOp([s.fromWallet], [0], [callData])
+            let estimateGas = await subBundler.estimateGas.executeOp(s.fromWallet, callData)
             console.log('subBundler estimateGas:', estimateGas)
 
             let bytes = utils.defaultAbiCoder.encode(
-                ['address[]', 'uint256[]', 'bytes[]'], 
-                [[s.fromWallet], [0], [callData]]
+                ['address', 'bytes'], 
+                [s.fromWallet, callData]
             )
-
-            console.log('bytes', bytes)
 
             typeArr.push(true)
             bytesArr.push(bytes)
@@ -151,7 +150,7 @@ describe('SmartWallet-Bundler-test', function () {
         let hash = utils.keccak256(calldata)
         let signature = await signer.signMessage(utils.arrayify(hash))
 
-        return {toArr, valueArr, dataArr, deadline, chainId, fromWallet, valid, signature}
+        return { toArr, valueArr, dataArr, deadline, chainId, fromWallet, valid, signature }
     }
 
 

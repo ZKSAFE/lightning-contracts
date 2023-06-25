@@ -19,7 +19,7 @@ module.exports = {
 			url: 'https://matic-mainnet.chainstacklabs.com',
 			chainId: 137,
 			accounts: [
-				process.env.ZKSAFE_Deployer_PK,
+				process.env.V2_TEST_PK,
 				process.env.ETH_PK_0,
 			]
 		},

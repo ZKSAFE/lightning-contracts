@@ -13,12 +13,6 @@ contract SubBundler is IUniswapV3FlashCallback {
 
     address internal _callTo;
 
-    // struct Operation {
-    //     address[] toArr;
-    //     uint[] valueArr;
-    //     bytes[] dataArr;
-    // }
-
     modifier onlyOwner() {
         require(
             address(bundler) == msg.sender || bundler.owner() == msg.sender,
@@ -26,7 +20,6 @@ contract SubBundler is IUniswapV3FlashCallback {
         );
         _;
     }
-
 
     constructor() {
         bundler = Bundler(payable(msg.sender));
@@ -38,28 +31,22 @@ contract SubBundler is IUniswapV3FlashCallback {
 
 
     function executeOp(
-        address[] calldata toArr,
-        uint[] calldata valueArr,
-        bytes[] calldata dataArr
-    ) public onlyOwner returns (uint ethBefore, uint ethAfter) {
-        ethBefore = original.balance;
+        address toWallet,
+        bytes calldata data
+    ) public onlyOwner {
+        _callTo = toWallet;
 
-        for (uint8 i = 0; i < toArr.length; i++) {
-            _callTo = toArr[i];
+        (bool success, bytes memory result) = _callTo.call{
+            value: 0
+        }(data);
 
-            (bool success, bytes memory result) = _callTo.call{
-                value: valueArr[i]
-            }(dataArr[i]);
-
-            if (!success) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
             }
         }
-        _callTo = address(0);
 
-        ethAfter = original.balance;
+        _callTo = address(0);
     }
 
 
@@ -84,9 +71,7 @@ contract SubBundler is IUniswapV3FlashCallback {
         uint borrowAmount0,
         uint borrowAmount1,
         bytes calldata data
-    ) external onlyOwner returns (uint ethBefore, uint ethAfter) {
-        ethBefore = original.balance;
-
+    ) external onlyOwner {
         IUniswapV3Pool pool = IUniswapV3Pool(poolAddr);
         _callTo = poolAddr;
         // recipient of borrowed amounts
@@ -95,8 +80,6 @@ contract SubBundler is IUniswapV3FlashCallback {
         // need amount 0 and amount1 in callback to pay back pool
         // recipient of flash should be THIS contract
         pool.flash(original, borrowAmount0, borrowAmount1, data);
-
-        ethAfter = original.balance;
     }
 
 
