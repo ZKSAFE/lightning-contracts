@@ -14,17 +14,19 @@ async function main() {
 	const chainId = (await provider.getNetwork()).chainId
 	console.log('chainId:', chainId)
 
-	const Bundler = await ethers.getContractFactory('Bundler', signer)
+	const Bundler = await ethers.getContractFactory('Bundler')
 	let bundler = await Bundler.deploy()
 	await bundler.deployed()
 	console.log('bundler deployed:', bundler.address)
 
-	const SubBundler = await ethers.getContractFactory('SubBundler', signer)
+	const SubBundler = await ethers.getContractFactory('SubBundler')
 	let subBundler = SubBundler.attach(await bundler.subBundler())
 	console.log('subBundler deployed:', subBundler.address)
 
-	// await signer.sendTransaction({ to: subBundler.address, value: m(1, 18) })
-	// console.log('send ETH to subBundler')
+	const WalletFactory = await ethers.getContractFactory('WalletFactory')
+	let factory = await WalletFactory.deploy()
+	await factory.deployed()
+	console.log('factory deployed:', factory.address)
 }
 
 

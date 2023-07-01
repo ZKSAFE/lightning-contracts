@@ -28,6 +28,16 @@ contract SocialRecovery is IERC165 {
         _;
     }
 
+    modifier onlyOwner() {
+        require(owner == msg.sender, "onlyOwner: caller is not the owner");
+        _;
+    }
+
+    modifier onlyOrignal() {
+        require(original == msg.sender, "onlyOrignal: caller is not the original");
+        _;
+    }
+
     constructor(address _owner) {
         owner = _owner;
         original = address(this);
@@ -39,7 +49,8 @@ contract SocialRecovery is IERC165 {
             interfaceId == this.getSocialRecovery.selector
                 ^ this.setSocialRecovery.selector
                 ^ this.quitGuardian.selector
-                ^ this.transferOwnership.selector;
+                ^ this.transferOwnership.selector
+                ^ this.coverOwnership.selector;
     }
 
     /**
@@ -79,9 +90,16 @@ contract SocialRecovery is IERC165 {
     }
 
     /**
+     * owner can transfer ownership by himself
+     */
+    function transferOwnership(address newOwner) external onlyOwnerAndOrignal {
+        _transferOwnership(newOwner);
+    }
+
+    /**
      * if owner's private key get lost, guardians multi-sign can change the owner
      */
-    function transferOwnership(address newOwner) external {
+    function coverOwnership(address newOwner) external {
         bool isGuardian;
         for (uint j = 0; j < guardians.length; ++j) {
             if (guardians[j] == msg.sender) {
@@ -89,11 +107,11 @@ contract SocialRecovery is IERC165 {
                 break;
             }
         }
-        require(isGuardian, "transferOwnership: you're not the Guardian");
+        require(isGuardian, "coverOwnership: you're not the Guardian");
         
         require(
             newOwner != address(0),
-            "transferOwnership: newOwner can't be 0x00"
+            "coverOwnership: newOwner can't be 0x00"
         );
 
         if (prepareOwner == newOwner) {
@@ -106,7 +124,7 @@ contract SocialRecovery is IERC165 {
                 }
                 require(
                     doneGuardians[i] != msg.sender,
-                    "transferOwnership: don't repeat"
+                    "coverOwnership: don't repeat"
                 );
             }
 

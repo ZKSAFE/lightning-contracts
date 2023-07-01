@@ -1,63 +1,117 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./SubBundler.sol";
-import "hardhat/console.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3FlashCallback.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract Bundler {
-    address public owner;
+interface IOwner {
+    function owner() external view returns (address);
+}
 
-    SubBundler public subBundler;
+contract Bundler is IUniswapV3FlashCallback {
 
-    event Error(uint8 i);
+    address private immutable original;
 
-    modifier onlyOwner() {
-        require(owner == msg.sender, "onlyOwner: caller is not the owner");
+    address public immutable bundlerManager;
+
+    address internal _callTo;
+
+    modifier onlyBundlerManager() {
+        require(
+            bundlerManager == msg.sender || IOwner(bundlerManager).owner() == msg.sender,
+            "onlyBundlerManager: caller is not the BundlerManager or its owner"
+        );
         _;
     }
 
     constructor() {
-        owner = msg.sender;
-        subBundler = new SubBundler();
+        bundlerManager = msg.sender;
+        original = address(this);
     }
 
-    function bundle(
-        bool[] calldata typeArr,
-        bytes[] calldata bytesArr
-    ) public onlyOwner {
-        for (uint8 i = 0; i < bytesArr.length; i++) {
-            if (typeArr[i]) {
 
-                (
-                    address toWallet,
-                    bytes memory data
-                ) = abi.decode(bytesArr[i], (address, bytes));
-                try
-                    subBundler.executeOp(toWallet, data)
-                {
-                    
-                } catch {
-                    emit Error(i);
-                }
+    receive() external payable {}
 
-            } else {
 
-                (
-                    address poolAddr,
-                    uint borrowAmount0,
-                    uint borrowAmount1,
-                    bytes memory data
-                ) = abi.decode(bytesArr[i], (address, uint, uint, bytes));
-                try
-                    subBundler.executeFlash(poolAddr, borrowAmount0, borrowAmount1, data)
-                {
-                    
-                } catch {
-                    emit Error(i);
-                }
+    function executeOperation(
+        address toWallet,
+        bytes calldata data
+    ) public onlyBundlerManager {
+        _callTo = toWallet;
 
+        (bool success, bytes memory result) = _callTo.call{
+            value: 0
+        }(data);
+
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
             }
         }
+
+        _callTo = address(0);
+    }
+
+
+    function bundlerCallback(
+        address to,
+        uint value,
+        bytes calldata data
+    ) external {
+        require(msg.sender == _callTo, "bundlerCallback: Only _callTo");
+
+        (bool success, bytes memory result) = to.call{value: value}(data);
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
+    }
+
+
+    function executeFlash(
+        address poolAddr,
+        uint borrowAmount0,
+        uint borrowAmount1,
+        bytes calldata data
+    ) external onlyBundlerManager {
+        IUniswapV3Pool pool = IUniswapV3Pool(poolAddr);
+        _callTo = poolAddr;
+        // recipient of borrowed amounts
+        // amount of token0 requested to borrow
+        // amount of token1 requested to borrow
+        // need amount 0 and amount1 in callback to pay back pool
+        // recipient of flash should be THIS contract
+        pool.flash(original, borrowAmount0, borrowAmount1, data);
+    }
+
+
+    function uniswapV3FlashCallback(
+        uint,
+        uint,
+        bytes calldata data
+    ) external override {
+        require(msg.sender == _callTo, "uniswapV3FlashCallback: Only _callTo");
+
+        (
+            address[] memory toArr,
+            uint[] memory valueArr,
+            bytes[] memory dataArr
+        ) = abi.decode(data, (address[], uint[], bytes[]));
+
+        for (uint8 i = 0; i < toArr.length; i++) {
+            _callTo = toArr[i];
+
+            (bool success, bytes memory result) = _callTo.call{
+                value: valueArr[i]
+            }(dataArr[i]);
+
+            if (!success) {
+                assembly {
+                    revert(add(result, 32), mload(result))
+                }
+            }
+        }
+        _callTo = address(0);
     }
 }

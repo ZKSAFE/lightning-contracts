@@ -47,7 +47,7 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
         address[] calldata toArr,
         uint[] calldata valueArr,
         bytes[] calldata dataArr
-    ) public onlyOwnerAndOrignal onlyBundler {
+    ) public onlyOwner onlyBundler {
         for (uint i = 0; i < toArr.length; i++) {
             (bool success, bytes memory result) = toArr[i].call{
                 value: valueArr[i]
@@ -60,6 +60,20 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
             }
         }
     }
+
+    // function _doBatchCall() private {
+    //     for (uint i = 0; i < toArr.length; i++) {
+    //         (bool success, bytes memory result) = toArr[i].call{
+    //             value: valueArr[i]
+    //         }(dataArr[i]);
+
+    //         if (!success) {
+    //             assembly {
+    //                 revert(add(result, 32), mload(result))
+    //             }
+    //         }
+    //     }
+    // }
 
     /**
      * multiple operations in a sign, with atomic(all successed or all failed)

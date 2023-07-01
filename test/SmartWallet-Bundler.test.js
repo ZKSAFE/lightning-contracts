@@ -6,11 +6,11 @@ describe('SmartWallet-Bundler-test', function () {
     let accounts
     let provider
     let factory
-    let walletArr
+    let wallet
     let bundler
-    let subBundler
+    let bundlerManager
     let usdt
-    let signedDataArr
+    let signData
 
     before(async function () {
         accounts = await ethers.getSigners()
@@ -22,103 +22,82 @@ describe('SmartWallet-Bundler-test', function () {
         usdt = await MockERC20.deploy('MockUSDT', 'USDT')
         await usdt.deployed()
         console.log('usdt deployed:', usdt.address)
-        await usdt.mint(accounts[0].address, m(100000, 18))
+        await usdt.mint(accounts[0].address, m(10000, 18))
         console.log('usdt mint to accounts[0]', d(await usdt.balanceOf(accounts[0].address), 18))
+        await usdt.mint(accounts[1].address, m(10000, 18))
+        console.log('usdt mint to accounts[1]', d(await usdt.balanceOf(accounts[1].address), 18))
     })
 
 
-    it('deploy Bundler SubBundler WalletFactory SmartWallet', async function () {
-        const Bundler = await ethers.getContractFactory('Bundler')
-        bundler = await Bundler.deploy()
-        await bundler.deployed()
-        console.log('bundler deployed:', bundler.address)
+    it('deploy BundlerManager Bundler WalletFactory SmartWallet', async function () {
+        const BundlerManager = await ethers.getContractFactory('BundlerManager')
+        bundlerManager = await BundlerManager.deploy()
+        await bundlerManager.deployed()
+        console.log('bundlerManager deployed:', bundlerManager.address)
 
-        const SubBundler = await ethers.getContractFactory('SubBundler')
-        subBundler = SubBundler.attach(await bundler.subBundler())
-        console.log('subBundler deployed:', subBundler.address)
+        const Bundler = await ethers.getContractFactory('Bundler')
+        bundler = Bundler.attach(await bundlerManager.bundler())
+        console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
         factory = await WalletFactory.deploy()
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 
+        let tx = await (await factory.createWallet(accounts[1].address, bundler.address)).wait()
+        // console.log('tx', tx, { depth: null })
+        let walletAddr = tx.events[0].args[0]
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
-        walletArr = []
-        for (let i=1; i<=5; i++) {
-            let tx = await (await factory.createWallet(accounts[i].address, subBundler.address)).wait()
-            let walletAddr = tx.events[0].args[0]
-            let wallet = SmartWallet.attach(walletAddr)
-            walletArr.push(wallet)
-            console.log('wallet' + i + ' deployed:', wallet.address)
-        }
+        wallet = SmartWallet.attach(walletAddr)
+        console.log('wallet deployed:', wallet.address)
+        
+        let isWallet = await factory.wallets(walletAddr)
+        console.log('isWallet:', isWallet)
     })
 
 
     it('deposit', async function () {
-        await accounts[0].sendTransaction({to: subBundler.address, value: m(4, 18)})
-        console.log('transfer ETH to', subBundler.address)
+        await accounts[0].sendTransaction({to: bundler.address, value: m(5, 18)})
+        console.log('transfer ETH to', bundler.address)
 
-        for (let wallet of walletArr) {
-            await usdt.transfer(wallet.address, m(2000, 18))
-            console.log('deposit ERC20 to', wallet.address)
-        }
+        await usdt.transfer(wallet.address, m(2000, 18))
+        console.log('deposit ERC20 to', wallet.address)
 
         await print()
     })
 
-    
-    it('accounts atomSign', async function () {
-        signedDataArr = []
-        for (let wallet of walletArr) {
-            let count = walletArr.indexOf(wallet) + 1
 
-            let callArr = []
-            let to = '0x'
-            let value = 0
-            let data = '0x'
+    it('account1 atomSign', async function () {
+        let callArr = []
+        let to = '0x'
+        let value = 0
+        let data = '0x'
 
-            to = subBundler.address
-            value = 0
-            const SubBundler = await ethers.getContractFactory('SubBundler')
-            data = SubBundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [wallet.address, m(1, 18), '0x'])
-            callArr.push({to, value, data})
-            
-            to = usdt.address
-            value = 0
-            const ERC = await ethers.getContractFactory('MockERC20')
-            data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [subBundler.address, m(2000, 18)])
-            callArr.push({to, value, data})
+        to = bundler.address
+        value = 0
+        const Bundler = await ethers.getContractFactory('Bundler')
+        data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [wallet.address, m(1, 18), []])
+        callArr.push({to, value, data})
+        
+        to = usdt.address
+        value = 0
+        const ERC = await ethers.getContractFactory('MockERC20')
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(2000, 18)])
+        callArr.push({to, value, data})
 
-            let signedData = await atomSign(accounts[count], wallet.address, callArr)
-            signedDataArr.push(signedData)
-            console.log('wallet' + count + ' atomSign done')
-        }
+        signData = await atomSign(accounts[1], wallet.address, callArr)
+        console.log('atomSign done')
     })
 
 
-    it('bundler executeOp', async function () {
+    it('bundler executeOperation', async function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
-        let bytesArr = []
-        let typeArr = []
-        for (let signedData of signedDataArr) {
-            let s = signedData
-            let callData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
-            
-            let estimateGas = await subBundler.estimateGas.executeOp(s.fromWallet, callData)
-            console.log('subBundler estimateGas:', estimateGas)
+        let s = signData
+        let callData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
 
-            let bytes = utils.defaultAbiCoder.encode(
-                ['address', 'bytes'], 
-                [s.fromWallet, callData]
-            )
-
-            typeArr.push(true)
-            bytesArr.push(bytes)
-        }
-
-        let estimateGas = await bundler.estimateGas.bundle(typeArr, bytesArr)
-        await bundler.bundle(typeArr, bytesArr)
-        console.log('bundle done gasCost:', estimateGas)
+        let estimateGas = await bundler.estimateGas.executeOperation(wallet.address, callData)
+        await bundler.executeOperation(wallet.address, callData)
+        console.log('executeOperation done, gasCost:', estimateGas)
 
         await print()
     })
@@ -156,15 +135,11 @@ describe('SmartWallet-Bundler-test', function () {
 
     async function print() {
         console.log('')
-
-        console.log('account0 usdt:', d(await usdt.balanceOf(accounts[0].address), 18), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
-        for (let wallet of walletArr) {
-            let count = walletArr.indexOf(wallet) + 1
-            console.log('wallet' + count + ' usdt:', d(await usdt.balanceOf(wallet.address), 18), 'eth:', d(await provider.getBalance(wallet.address), 18))
-        }
         
+        console.log('account0 usdt:', d(await usdt.balanceOf(accounts[0].address), 18), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
+        console.log('account1 usdt:', d(await usdt.balanceOf(accounts[1].address), 18), 'eth:', d(await provider.getBalance(accounts[1].address), 18))
         console.log('bundler usdt:', d(await usdt.balanceOf(bundler.address), 18), 'eth:', d(await provider.getBalance(bundler.address), 18))
-        console.log('subBundler usdt:', d(await usdt.balanceOf(subBundler.address), 18), 'eth:', d(await provider.getBalance(subBundler.address), 18))
+        console.log('wallet usdt:', d(await usdt.balanceOf(wallet.address), 18), 'eth:', d(await provider.getBalance(wallet.address), 18))
 
         console.log('')
     }

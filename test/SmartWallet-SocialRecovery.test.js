@@ -8,7 +8,7 @@ describe('SmartWallet-SocialRecovery-test', function () {
     let factory
     let wallet
     let bundler
-    let subBundler
+    let bundlerManager
     let usdt
     let signData
 
@@ -29,22 +29,22 @@ describe('SmartWallet-SocialRecovery-test', function () {
     })
 
 
-    it('deploy Bundler SubBundler WalletFactory SmartWallet', async function () {
-        const Bundler = await ethers.getContractFactory('Bundler')
-        bundler = await Bundler.deploy()
-        await bundler.deployed()
-        console.log('bundler deployed:', bundler.address)
+    it('deploy BundlerManager Bundler WalletFactory SmartWallet', async function () {
+        const BundlerManager = await ethers.getContractFactory('BundlerManager')
+        bundlerManager = await BundlerManager.deploy()
+        await bundlerManager.deployed()
+        console.log('bundlerManager deployed:', bundlerManager.address)
 
-        const SubBundler = await ethers.getContractFactory('SubBundler')
-        subBundler = SubBundler.attach(await bundler.subBundler())
-        console.log('subBundler deployed:', subBundler.address)
+        const Bundler = await ethers.getContractFactory('Bundler')
+        bundler = Bundler.attach(await bundlerManager.bundler())
+        console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
         factory = await WalletFactory.deploy()
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 
-        let tx = await (await factory.createWallet(accounts[0].address, subBundler.address)).wait()
+        let tx = await (await factory.createWallet(accounts[0].address, bundler.address)).wait()
         // console.log('tx', tx, { depth: null })
         let walletAddr = tx.events[0].args[0]
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
@@ -76,7 +76,7 @@ describe('SmartWallet-SocialRecovery-test', function () {
         let s = signData
         let opData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
 
-        await subBundler.executeOp(wallet.address, opData)
+        await bundler.executeOperation(wallet.address, opData)
 
         let sr = await wallet.getSocialRecovery()
         console.log('getSocialRecovery:', sr)
@@ -101,9 +101,9 @@ describe('SmartWallet-SocialRecovery-test', function () {
     })
 
 
-    it('account2 transferOwnership', async function () {
+    it('account2 coverOwnership', async function () {
 
-        await wallet.connect(accounts[2]).transferOwnership(accounts[3].address)
+        await wallet.connect(accounts[2]).coverOwnership(accounts[3].address)
         
         let sr = await wallet.getSocialRecovery()
         console.log('getSocialRecovery:', sr)
@@ -112,9 +112,9 @@ describe('SmartWallet-SocialRecovery-test', function () {
     })
 
 
-    it('account3 transferOwnership', async function () {
+    it('account3 coverOwnership', async function () {
 
-        await wallet.connect(accounts[3]).transferOwnership(accounts[3].address)
+        await wallet.connect(accounts[3]).coverOwnership(accounts[3].address)
         
         let sr = await wallet.getSocialRecovery()
         console.log('getSocialRecovery:', sr)
