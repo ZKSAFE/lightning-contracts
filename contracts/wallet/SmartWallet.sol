@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "./SocialRecovery.sol";
-import "hardhat/console.sol";
 
 contract SmartWallet is ReentrancyGuard, SocialRecovery {
     using ECDSA for bytes32;
@@ -35,7 +34,7 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
             super.supportsInterface(interfaceId) ||
-            interfaceId == this.batchCall.selector
+            interfaceId == this.atomCall.selector
                 ^ this.atomSignCall.selector
                 ^ this.makeAtomSignInvalid.selector;
     }
@@ -43,49 +42,39 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
     /**
      * if you're the owner and also the bundler, you can call by youself
      */
-    function batchCall(
-        address[] calldata toArr,
-        uint[] calldata valueArr,
-        bytes[] calldata dataArr
+    function atomCall(
+        bytes calldata atomCallbytes
     ) public onlyOwner onlyBundler {
-        for (uint i = 0; i < toArr.length; i++) {
-            (bool success, bytes memory result) = toArr[i].call{
-                value: valueArr[i]
-            }(dataArr[i]);
+        _doAtomCall(atomCallbytes);
+    }
 
+    function _doAtomCall(bytes calldata atomCallbytes) private {
+        uint i;
+        while(i < atomCallbytes.length) {
+            address to = address(uint160(bytes20(atomCallbytes[i:i+20])));
+            uint value = uint(bytes32(atomCallbytes[i+20:i+52]));
+            uint len = uint(bytes32(atomCallbytes[i+52:i+84]));
+
+            (bool success, bytes memory result) = to.call{value: value}(atomCallbytes[i+84:i+84+len]);
             if (!success) {
                 assembly {
                     revert(add(result, 32), mload(result))
                 }
             }
+
+            i += 84 + len;
         }
     }
-
-    // function _doBatchCall() private {
-    //     for (uint i = 0; i < toArr.length; i++) {
-    //         (bool success, bytes memory result) = toArr[i].call{
-    //             value: valueArr[i]
-    //         }(dataArr[i]);
-
-    //         if (!success) {
-    //             assembly {
-    //                 revert(add(result, 32), mload(result))
-    //             }
-    //         }
-    //     }
-    // }
 
     /**
      * multiple operations in a sign, with atomic(all successed or all failed)
      * owner to sign, bundler to call
      */
     function atomSignCall(
-        address[] calldata toArr,
-        uint[] calldata valueArr,
-        bytes[] calldata dataArr,
+        bytes calldata atomCallbytes,
         uint32 deadline,
         bytes calldata signature
-    ) external nonReentrant onlyBundler {
+    ) external onlyBundler {
         require(deadline >= block.timestamp, "atomSignCall: Expired");
         bytes32 msgHash = keccak256(
             bytes.concat(
@@ -101,19 +90,7 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
             "atomSignCall: Invalid Signature"
         );
 
-        console.log("atomSignCall: check pass");
-
-        for (uint8 i = 0; i < toArr.length; i++) {
-            (bool success, bytes memory result) = toArr[i].call{
-                value: valueArr[i]
-            }(dataArr[i]);
-
-            if (!success) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
-            }
-        }
+        _doAtomCall(atomCallbytes);
 
         usedMsgHashes[msgHash] = true;
     }

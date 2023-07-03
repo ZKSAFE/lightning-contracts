@@ -1,6 +1,5 @@
 const { BigNumber, utils } = require('ethers')
-const snarkjs = require("snarkjs")
-const fs = require("fs")
+const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
 describe('SmartWallet-SocialRecovery-test', function () {
     let accounts
@@ -10,7 +9,7 @@ describe('SmartWallet-SocialRecovery-test', function () {
     let bundler
     let bundlerManager
     let usdt
-    let signData
+    let atomSignParams
 
     before(async function () {
         accounts = await ethers.getSigners()
@@ -70,11 +69,11 @@ describe('SmartWallet-SocialRecovery-test', function () {
         data = SmartWallet.interface.encodeFunctionData('setSocialRecovery(address[],uint256)', [guardians, needGuardiansNum])
         callArr.push({to, value, data})
         
-        signData = await atomSign(accounts[0], wallet.address, callArr)
+        atomSignParams = await atomSign(accounts[0], wallet.address, callArr)
         console.log('atomSign done')
 
-        let s = signData
-        let opData = SmartWallet.interface.encodeFunctionData('atomSignCall', [s.toArr, s.valueArr, s.dataArr, s.deadline, s.signature])
+        let p = atomSignParams
+        let opData = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallbytes, p.deadline, p.signature])
 
         await bundler.executeOperation(wallet.address, opData)
 
@@ -124,17 +123,14 @@ describe('SmartWallet-SocialRecovery-test', function () {
 
 
     async function atomSign(signer, fromWallet, callArr) {
-        let toArr = []
-        let valueArr = []
-        let dataArr = []
+        let atomCallbytes = '0x'
         for (let i=0; i<callArr.length; i++) {
             let to = callArr[i].to
             let value = callArr[i].value
             let data = callArr[i].data
-
-            toArr.push(to)
-            valueArr.push(value)
-            dataArr.push(data)
+            
+            let len = utils.arrayify(data).length
+            atomCallbytes = utils.hexConcat([atomCallbytes, to, utils.hexZeroPad(value, 32), utils.hexZeroPad(len, 32), data])
         }
 
         let deadline = parseInt(Date.now() / 1000) + 600;
@@ -143,54 +139,12 @@ describe('SmartWallet-SocialRecovery-test', function () {
         let wallet = await SmartWallet.attach(fromWallet)
         let valid = await wallet.valid()
 
-        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [toArr, valueArr, dataArr, deadline, '0x'])
+        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallbytes, deadline, '0x'])
         calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
 
         let hash = utils.keccak256(calldata)
         let signature = await signer.signMessage(utils.arrayify(hash))
 
-        return { toArr, valueArr, dataArr, deadline, chainId, fromWallet, valid, signature }
-    }
-
-    function stringToHex(string) {
-        let hexStr = '';
-        for (let i = 0; i < string.length; i++) {
-            let compact = string.charCodeAt(i).toString(16)
-            hexStr += compact
-        }
-        return '0x' + hexStr
-    }
-
-    function getAbi(jsonPath) {
-        let file = fs.readFileSync(jsonPath)
-        let abi = JSON.parse(file.toString()).abi
-        return abi
-    }
-
-    async function delay(sec) {
-        console.log('delay.. ' + sec + 's')
-        return new Promise((resolve, reject) => {
-            setTimeout(resolve, sec * 1000);
-        })
-    }
-
-    function m(num, decimals) {
-        return BigNumber.from(num).mul(BigNumber.from(10).pow(decimals))
-    }
-
-    function d(bn, decimals) {
-        return bn.mul(BigNumber.from(100)).div(BigNumber.from(10).pow(decimals)).toNumber() / 100
-    }
-
-    function b(num) {
-        return BigNumber.from(num)
-    }
-
-    function n(bn) {
-        return bn.toNumber()
-    }
-
-    function s(bn) {
-        return bn.toString()
+        return { atomCallbytes, deadline, chainId, fromWallet, valid, signature }
     }
 })

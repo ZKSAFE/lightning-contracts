@@ -102,7 +102,7 @@ describe('SmartWallet-BundlerManager-test', function () {
         let bundleDataArr = []
         for (let p of atomSignParamsArr) {
             let atomSignData = SmartWallet.interface.encodeFunctionData('atomSignCall',
-                [p.toArr, p.valueArr, p.dataArr, p.deadline, p.signature])
+                [p.atomCallbytes, p.deadline, p.signature])
 
             let bundleData = Bundler.interface.encodeFunctionData('executeOperation', [p.fromWallet, atomSignData])
             bundleDataArr.push(bundleData)
@@ -117,17 +117,14 @@ describe('SmartWallet-BundlerManager-test', function () {
 
 
     async function atomSign(signer, fromWallet, callArr) {
-        let toArr = []
-        let valueArr = []
-        let dataArr = []
-        for (let i = 0; i < callArr.length; i++) {
+        let atomCallbytes = '0x'
+        for (let i=0; i<callArr.length; i++) {
             let to = callArr[i].to
             let value = callArr[i].value
             let data = callArr[i].data
-
-            toArr.push(to)
-            valueArr.push(value)
-            dataArr.push(data)
+            
+            let len = utils.arrayify(data).length
+            atomCallbytes = utils.hexConcat([atomCallbytes, to, utils.hexZeroPad(value, 32), utils.hexZeroPad(len, 32), data])
         }
 
         let deadline = parseInt(Date.now() / 1000) + 600;
@@ -136,14 +133,13 @@ describe('SmartWallet-BundlerManager-test', function () {
         let wallet = await SmartWallet.attach(fromWallet)
         let valid = await wallet.valid()
 
-        let atomSignData = SmartWallet.interface.encodeFunctionData('atomSignCall',
-            [toArr, valueArr, dataArr, deadline, '0x'])
-        atomSignData = utils.hexConcat([atomSignData, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
+        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallbytes, deadline, '0x'])
+        calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
 
-        let hash = utils.keccak256(atomSignData)
+        let hash = utils.keccak256(calldata)
         let signature = await signer.signMessage(utils.arrayify(hash))
 
-        return { toArr, valueArr, dataArr, deadline, chainId, fromWallet, valid, signature }
+        return { atomCallbytes, deadline, chainId, fromWallet, valid, signature }
     }
 
 
@@ -168,6 +164,4 @@ describe('SmartWallet-BundlerManager-test', function () {
 
         console.log('')
     }
-
-
 })

@@ -34,10 +34,10 @@ contract Bundler is IUniswapV3FlashCallback {
 
 
     function executeOperation(
-        address toWallet,
+        address wallet,
         bytes calldata data
     ) public onlyBundlerManager {
-        _callTo = toWallet;
+        _callTo = wallet;
 
         (bool success, bytes memory result) = _callTo.call{
             value: 0
@@ -70,48 +70,44 @@ contract Bundler is IUniswapV3FlashCallback {
 
 
     function executeFlash(
-        address poolAddr,
+        address pool,
         uint borrowAmount0,
         uint borrowAmount1,
-        bytes calldata data
+        bytes calldata atomCallbytes
     ) external onlyBundlerManager {
-        IUniswapV3Pool pool = IUniswapV3Pool(poolAddr);
-        _callTo = poolAddr;
+        _callTo = pool;
         // recipient of borrowed amounts
         // amount of token0 requested to borrow
         // amount of token1 requested to borrow
         // need amount 0 and amount1 in callback to pay back pool
         // recipient of flash should be THIS contract
-        pool.flash(original, borrowAmount0, borrowAmount1, data);
+        IUniswapV3Pool(pool).flash(original, borrowAmount0, borrowAmount1, atomCallbytes);
     }
 
 
     function uniswapV3FlashCallback(
         uint,
         uint,
-        bytes calldata data
+        bytes calldata atomCallbytes
     ) external override {
         require(msg.sender == _callTo, "uniswapV3FlashCallback: Only _callTo");
 
-        (
-            address[] memory toArr,
-            uint[] memory valueArr,
-            bytes[] memory dataArr
-        ) = abi.decode(data, (address[], uint[], bytes[]));
+        uint i;
+        while(i < atomCallbytes.length) {
+            address to = address(uint160(bytes20(atomCallbytes[i:i+20])));
+            uint value = uint(bytes32(atomCallbytes[i+20:i+52]));
+            uint len = uint(bytes32(atomCallbytes[i+52:i+84]));
 
-        for (uint8 i = 0; i < toArr.length; i++) {
-            _callTo = toArr[i];
-
-            (bool success, bytes memory result) = _callTo.call{
-                value: valueArr[i]
-            }(dataArr[i]);
-
+            (bool success, bytes memory result) = to.call{value: value}(atomCallbytes[i+84:i+84+len]);
             if (!success) {
                 assembly {
                     revert(add(result, 32), mload(result))
                 }
             }
+
+            i += 84 + len;
         }
+
         _callTo = address(0);
     }
 }

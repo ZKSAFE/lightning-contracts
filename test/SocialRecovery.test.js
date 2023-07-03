@@ -1,6 +1,5 @@
 const { BigNumber, utils } = require('ethers')
-const snarkjs = require("snarkjs")
-const fs = require("fs")
+const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
 describe('SocialRecovery-test', function () {
     let accounts
@@ -104,49 +103,4 @@ describe('SocialRecovery-test', function () {
         
         console.log('owner:', await wallet.owner())
     })
-
-
-
-
-    function stringToHex(string) {
-        let hexStr = '';
-        for (let i = 0; i < string.length; i++) {
-            let compact = string.charCodeAt(i).toString(16)
-            hexStr += compact
-        }
-        return '0x' + hexStr
-    }
-
-    function getAbi(jsonPath) {
-        let file = fs.readFileSync(jsonPath)
-        let abi = JSON.parse(file.toString()).abi
-        return abi
-    }
-
-    async function delay(sec) {
-        console.log('delay.. ' + sec + 's')
-        return new Promise((resolve, reject) => {
-            setTimeout(resolve, sec * 1000);
-        })
-    }
-
-    function m(num, decimals) {
-        return BigNumber.from(num).mul(BigNumber.from(10).pow(decimals))
-    }
-
-    function d(bn, decimals) {
-        return bn.mul(BigNumber.from(100)).div(BigNumber.from(10).pow(decimals)).toNumber() / 100
-    }
-
-    function b(num) {
-        return BigNumber.from(num)
-    }
-
-    function n(bn) {
-        return bn.toNumber()
-    }
-
-    function s(bn) {
-        return bn.toString()
-    }
 })
