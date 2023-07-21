@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3FlashCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IOwner {
     function owner() external view returns (address);
@@ -50,6 +51,35 @@ contract Bundler is IUniswapV3FlashCallback {
         }
 
         _callTo = address(0);
+    }
+
+
+    function executeOperationReturnIncreases(
+        address wallet,
+        bytes calldata data,
+        address[] calldata retTokens
+    ) public onlyBundlerManager returns (uint[] memory increases){
+        uint[] memory beforeBalances = new uint[](retTokens.length);
+        uint8 i;
+        for (i = 0; i<retTokens.length; i++) {
+            if (retTokens[i] == address(0)) {
+                beforeBalances[i] = wallet.balance;
+            } else {
+                beforeBalances[i] = IERC20(retTokens[i]).balanceOf(wallet);
+            }
+        }
+
+        executeOperation(wallet, data);
+
+        increases = new uint[](retTokens.length);
+        for (i = 0; i<retTokens.length; i++) {
+             if (retTokens[i] == address(0)) {
+                increases[i] = wallet.balance - beforeBalances[i];
+            } else {
+                increases[i] = IERC20(retTokens[i]).balanceOf(wallet) - beforeBalances[i];
+            }
+        }
+        return increases;
     }
 
 

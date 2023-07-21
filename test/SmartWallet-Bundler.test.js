@@ -1,6 +1,8 @@
 const { BigNumber, utils } = require('ethers')
 const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
+const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
+
 describe('SmartWallet-Bundler-test', function () {
     let accounts
     let provider
@@ -50,6 +52,9 @@ describe('SmartWallet-Bundler-test', function () {
 
         await accounts[0].sendTransaction({to: bundler.address, value: m(5, 18)})
         console.log('transfer ETH to', wallet.address)
+
+        await usdt.transfer(bundler.address, m(200, 18))
+        console.log('deposit ERC20 to', bundler.address)
 
         await usdt.transfer(wallet.address, m(2000, 18))
         console.log('deposit ERC20 to', wallet.address)
@@ -105,15 +110,34 @@ describe('SmartWallet-Bundler-test', function () {
         const Bundler = await ethers.getContractFactory('Bundler')
         data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [wallet.address, m(1, 18), '0x'])
         callArr.push({to, value, data})
+
+        to = bundler.address
+        value = 0
+        const ERC = await ethers.getContractFactory('MockERC20')
+        let data2 = ERC.interface.encodeFunctionData('transfer(address,uint256)', [wallet.address, m(200, 18)])
+        data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [usdt.address, 0, data2])
+        callArr.push({to, value, data})
         
         to = usdt.address
         value = 0
-        const ERC = await ethers.getContractFactory('MockERC20')
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(2000, 18)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(100, 18)])
         callArr.push({to, value, data})
 
         atomSignParams = await atomSign(accounts[1], wallet.address, callArr)
         console.log('atomSign done')
+    })
+
+
+    it('bundler executeOperationReturnIncreases', async function () {
+        const SmartWallet = await ethers.getContractFactory('SmartWallet')
+        let p = atomSignParams
+        let data = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallbytes, p.deadline, p.signature])
+
+        let retTokens = [NATIVE_ETH_ADDRESS, usdt.address]
+        let arr = await bundler.callStatic.executeOperationReturnIncreases(wallet.address, data, retTokens)
+        console.log('executeOperationReturnIncreases done, arr:', arr)
+
+        await print()
     })
 
 

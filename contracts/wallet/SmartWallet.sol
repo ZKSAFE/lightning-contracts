@@ -111,6 +111,8 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
         address oldBundler = bundler;
         bundler = newBundler;
 
+        valid++; //makeAtomSignInvalid
+
         emit BundlerChanged(oldBundler, newBundler);
     }
 
