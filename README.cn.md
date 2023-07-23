@@ -6,7 +6,7 @@
 ## 简介
 以太坊闪电网络（以下简称ELN）是对以太坊的链下扩容，通过双方在链下对一系列操作进行签名，最后再上链执行。主要用于建立双方之间在上链之前的信任，在ELN之前，这种信任只能上链，而ELN把信任扩展到了链下。
 
-ELN核心原理是，双方都使用智能合约钱包（以下简称智能钱包），把双方的calls全部合并成一个call，双方都对这个call进行签名，最后这个call由双方的智能合约钱包在一个tx里执行，这就保证了原子性，如果有一方不执行或执行出错，那么全部回滚，双方都没有损失。
+ELN核心原理是，双方都使用智能合约钱包（以下简称智能钱包），把双方的calls全部合并成一个call，双方都对这个call进行签名，最后这个call由双方的智能钱包在一个tx里执行，这就保证了原子性，如果有一方不执行或执行出错，那么全部回滚，双方都没有损失。
 
 这其实是一种链下合约，合约内容是双方的calls，附上双方的签名，信任建立在执行之前，而上链执行即合约生效。
 
@@ -106,11 +106,11 @@ function callback(
 ### 数据结构
 众所周知，每一个call由`to`、`value`、`data`组成，我们把这三个参数编码为一个bytes，由于`data`本身也是bytes，所以需要添加一个长度参数`len`来表示`data`的长度，于是我们得到了：
 
-### <center>`callbytes` = `to` + `value` + `len` + `data`</center>
+<p align="center"><b>callbytes = to + value + len + data</b></p>
 
 那么，多个calls可编码为一个call，就有了：
 
-### <center>`atomCallbytes` = `callbytes` + `callbytes` + `callbytes` ...</center>
+<p align="center"><b>atomCallbytes = callbytes + callbytes + callbytes ...</b></p>
 
 也就是`do calls`所实现的，它有原子性的特点，即这些call的调用，要么全部成功，要么全部失败，这是信任的基础。
 
@@ -183,6 +183,8 @@ ELN可以作为挂单使用，对于user来说：
 5. bundler负责提交上链
 
 这是一个链下合约的嵌套，实现了三方的链下合约，上链执行后，maker用1ETH换到1999USDT，user用2000USDT换到了1ETH，bundler作为中介赚到了1USDT，三方共识达成。
+
+<br>
 
 ## 最后
 比特币有BRC20，以太坊为什么不能有闪电网络？
