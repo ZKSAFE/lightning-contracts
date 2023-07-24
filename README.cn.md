@@ -59,7 +59,7 @@ function atomSignCall(
 
 这样，Alice可以通过一个`signature`来对atomCallbytes，即多个calls进行签名，确保这些calls合在一起具有原子性。`onlyBob`限制了`atomSignCall()`只能由Bob进行调用，如果Bob调用了这个函数，也就意味着Bob也认可这些calls，并签了名。
 
-以上的calls全部是从Alice的智能钱包发起，如果要加入从Bob的智能钱包发起的call，比如说让Bob给Alice转账，那么就需要Bob的智能钱包需要有`executeOperation()`和`callback()`函数：
+以上的calls全部是从Alice的智能钱包发起，如果要加入从Bob的智能钱包发起的call，比如说让Bob给Alice转账，那么Bob的智能钱包需要有`executeOperation()`和`callback()`函数：
 
 ```solidity
 function executeOperation(
@@ -125,11 +125,11 @@ function callback(
 ## 使用场景
 ### gas代付服务
 我们先用一个简单的例子来说明：gas代付。它相当于user和bundler之间签署一组calls，calls内容为：
-1. user想要通过他的智能合约钱包发起多个calls
+1. user想要通过他的智能钱包发起多个calls
 2. user给bundler转账1USDT作为gas，包含在calls里
 3. bundler负责提交上链
 
-user编码calls内容，附上自己的签名，这个签名能确保内容不可更改。然后发送给bundler，如果bundler觉得gas给得太少划不来，可以不提交上链，如果认可calls内容，那么签名上链即可。calls执行后，user得到了他想要的操作，bundler得到了gas小费。
+user编码calls内容，附上自己的签名，这个签名能确保内容不可更改。然后发送给bundler，如果bundler觉得gas给得太少划不来，可以不提交上链；如果认可calls内容，那么签名上链即可。calls执行后，user得到了他想要的操作，bundler得到了gas小费。
 
 值得一提的事，ERC4337也能实现gas代付，ELN跟ERC4337并不冲突，你可以在智能钱包里同时实现ELN和ERC4337。
 
@@ -161,9 +161,9 @@ ELN可以作为挂单使用，对于user来说：
 <br>
 
 ### 交易聚合
-对于bundler来说，通过闪电贷是完成交易，自己就是聚合器，而且不需要资金池，实现如下：
+对于bundler来说，通过闪电贷完成交易，自己就是聚合器，而且不需要资金池，实现如下：
 1. bundler通过闪电贷借来2000USDT
-2. bundler把20000USDT在uniswap兑换为1.001ETH
+2. bundler把2000USDT在uniswap兑换为1.001ETH
 3. 执行user的挂单calls：
    1. user转2000USDT给bundler
    2. bundler转1ETH给user
@@ -193,4 +193,4 @@ ELN可以作为挂单使用，对于user来说：
 
 以太坊闪电网络是用双方的链下签名进行链下扩展。
 
-如今，L2成为了主要的扩容技术，把以前昂贵的操作变得便宜了；而ELN扩展的是应用的可能性，把以前不能实现的，比如说限价单，现在能实现了。期望将来有更多创新的DEFI和NFT实现在ELN上，为以太坊的生态繁荣助力。
+如今，L2成为了主要的扩容技术，把以前昂贵的操作变得便宜了；而ELN扩展的是应用的可能性，把以前不能实现的（比如限价单），现在能实现了。期望将来有更多创新的DEFI和Dapp实现在ELN上，为以太坊的生态繁荣助力。
