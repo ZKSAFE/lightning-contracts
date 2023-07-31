@@ -27,16 +27,16 @@ module.exports = {
 			url: 'https://bsc.nodereal.io',
 			chainId: 56,
 			accounts: [
-				process.env.ZKSAFE_Deployer_PK,
 				process.env.ETH_PK_0,
+				process.env.ZKSAFE_Deployer_PK,
 			]
 		},
 		op_mainnet: {
 			url: 'https://mainnet.optimism.io/',
 			chainId: 10,
 			accounts: [
-				process.env.ZKSAFE_Deployer_PK,
 				process.env.ETH_PK_0,
+				process.env.ZKSAFE_Deployer_PK,
 			]
 		},
 		arbitrumOne: {
@@ -50,6 +50,13 @@ module.exports = {
 		scroll_alpha: {
 			url: 'https://alpha-rpc.scroll.io/l2',
 			chainId: 534353,
+			accounts: [
+				process.env.ETH_PK_0,
+			]
+		},
+		goerli: {
+			url: 'https://ethereum-goerli.publicnode.com',
+			chainId: 5,
 			accounts: [
 				process.env.ETH_PK_0,
 			]
