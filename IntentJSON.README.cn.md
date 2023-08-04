@@ -99,7 +99,7 @@ IntendJSON就是这个明细列表，它可以告诉用户总共花费多少，�
 - `IntendJSON.assetsChanges[x].assetType`：必需，`Native` 表示原生代币，比如ETH\Matic\BNB，其他可选值 `ERC20` \ `ERC721`
 - `IntendJSON.assetsChanges[x].assetParams`：必需，如果是 `Native`，`assetParams` 固定是 `[]`；如果是 `ERC20`，`assetParams[0]` 为Token的合约地址；如果是 `ERC721`，`assetParams[0]` 为NFT的合约地址，`assetParams[1]` 为NFT的tokenId。
 
-SCA通过检查 `calls` 可以知道转出的资产，但是用户获得的资产是无法知道的，所以需要在 `assetsChanges` 里添加，如果Dapp不主动添加，那么显示的账单可能会大于用户的实际支出，对Dapp不利，建议添加。
+SCA通过检查 `calls` 可以知道用户付出的资产，但是用户获得的资产是无法知道的，所以需要在 `assetsChanges` 里添加，如果Dapp不主动添加，那么显示的账单可能会大于用户的实际支出，对Dapp不利，建议添加。
 
 关于这部分的源码实现，可以参考：
 
@@ -133,7 +133,7 @@ function executeOperationReturnChanges(
 }
 ```
 
-对于给定的 `retTokens`，通过ethers.js的 `callStatic` 模拟整个调用过程，返回 `retTokens` 的变化值 `changes`。
+对于给定的 `retTokens`，通过ethers.js的 `callStatic` 模拟整个调用过程，返回 `retTokens` 的变化值 `changes`，正数表示获得，负数表示付出。
 
 <br>
 
@@ -142,7 +142,7 @@ IntendJSON 是为SCA设计的，包括AA和ELN都可以使用。
 
 IntendJSON 是链下的改进方案，不改变原有的SCA合约设计，也不改变Dapp的合约设计。
 
-需要改变的是Dapp调用钱包的方式，以及钱包对IntendJSON的解析。
+需要改变的是Dapp页面调用钱包的方式，以及钱包对IntendJSON的解析。
 
 <br>
 
