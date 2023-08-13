@@ -120,7 +120,7 @@ describe('SmartWallet-Bundler-test', function () {
         
         to = usdt.address
         value = 0
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(100, 18)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1000, 18)])
         callArr.push({to, value, data})
 
         atomSignParams = await atomSign(accounts[1], wallet.address, callArr)
@@ -128,14 +128,14 @@ describe('SmartWallet-Bundler-test', function () {
     })
 
 
-    it('bundler executeOperationReturnIncreases', async function () {
+    it('bundler executeOperationReturnChanges', async function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
         let p = atomSignParams
         let data = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallbytes, p.deadline, p.signature])
 
         let retTokens = [NATIVE_ETH_ADDRESS, usdt.address]
-        let arr = await bundler.callStatic.executeOperationReturnIncreases(wallet.address, data, retTokens)
-        console.log('executeOperationReturnIncreases done, arr:', arr)
+        let arr = await bundler.callStatic.executeOperationReturnChanges(wallet.address, data, retTokens)
+        console.log('executeOperationReturnChanges done, arr:', arr)
 
         await print()
     })

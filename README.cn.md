@@ -13,14 +13,14 @@
 <br>
 
 ## 核心原理
-ELN核心原理是，双方都使用智能合约钱包（以下简称智能钱包），把双方的calls全部合并成一个call，双方都对这个call进行签名，最后这个call在一个tx里执行，这就保证了原子性，如果有一方不执行或执行出错，那么全部回滚，双方都没有损失。
+ELN核心原理是，双方都使用智能合约账户（以下简称SCA），把双方的calls全部合并成一个call，双方都对这个call进行签名，最后这个call在一个tx里执行，这就保证了原子性，如果有一方不执行或执行出错，那么全部回滚，双方都没有损失。
 
 因为最后需要上链，为了不引入第三方中间人来上链，确保所有事情都是双方之间的事，ELN必须由双方中的一方来执行上链，所以合约里只需要验证非上链方的签名，而上链方的签名在共识层验证。
 
 <br>
 
 ## 源码实现
-假设Alice是非上链方，Bob是上链方。在Alice的智能钱包中，添加`atomSignCall()`函数：
+假设Alice是非上链方，Bob是上链方。在Alice的SCA中，添加`atomSignCall()`函数：
 
 ```solidity
 function atomSignCall(
@@ -66,7 +66,7 @@ function atomSignCall(
 
 这样，Alice可以通过一个`signature`来对atomCallbytes，即多个calls进行签名，确保这些calls合在一起具有原子性。`onlyBob`限制了`atomSignCall()`只能由Bob进行调用，如果Bob调用了这个函数，也就意味着Bob也认可这些calls，并签了名。
 
-以上的calls全部是从Alice的智能钱包发起，如果要加入从Bob的智能钱包发起的call，比如说让Bob给Alice转账，那么Bob的智能钱包需要有`executeOperation()`和`callback()`函数：
+以上的calls全部是从Alice的SCA发起，如果要加入从Bob的SCA发起的call，比如说让Bob给Alice转账，那么Bob的SCA需要有`executeOperation()`和`callback()`函数：
 
 ```solidity
 function executeOperation(
@@ -104,7 +104,7 @@ function callback(
 }
 ```
 
-其中，`executeOperation()`用于执行Alice智能钱包的`atomSignCall()`调用，calls如果包含从Bob的智能钱包发起的call，那么Alice的智能钱包会调用Bob智能钱包的`callback()`，`_callTo`确保了`callback()`的调用在calls中，即实现了回调。
+其中，`executeOperation()`用于执行Alice的SCA的`atomSignCall()`调用，calls如果包含从Bob的SCA发起的call，那么Alice的SCA会调用Bob的SCA的`callback()`，`_callTo`确保了`callback()`的调用在calls中，即实现了回调。
 
 最后`onlyOwner`确保了上链者只能是Bob，即Bob的签名在共识层验证。整个流程确保了4件事：
 1. 一系列的事情即calls具有原子性
@@ -130,7 +130,7 @@ function callback(
 然后，用户需要对这组calls进行签名，还包括：
 - deadline：签名的过期时间
 - block.chainid：只对指定的链有效
-- address(this)：一个私钥可能对应多个合约钱包，需要指定一个
+- address(this)：一个私钥可能对应多个SCA，需要指定一个
 - valid：用户可以随时修改valid，修改后，之前签过的还未上链的`atomCallbytes`将失效，实现签名的撤销
 
 我们尝试过其他的数据格式，这种格式既省gas结构也清晰。
@@ -142,13 +142,13 @@ ELN源码比较简单，组合使用也很灵活。
 
 ### gas代付服务
 我们先用一个简单的例子来说明：gas代付。它相当于user和bundler之间签署一组calls，calls内容为：
-1. user想要通过他的智能钱包发起多个calls
+1. user想要通过他的SCA发起多个calls
 2. user给bundler转账1USDT作为gas，包含在calls里
 3. bundler负责提交上链
 
 user编码calls内容，附上自己的签名，这个签名能确保内容不可更改。然后发送给bundler，如果bundler觉得gas给得太少划不来，可以不提交上链；如果认可calls内容，那么签名上链即可。calls执行后，user得到了他想要的操作，bundler得到了gas小费。
 
-值得一提的事，ERC4337也能实现gas代付，ELN跟ERC4337并不冲突，你可以在智能钱包里同时实现ELN和ERC4337。
+值得一提的事，ERC4337也能实现gas代付，ELN跟ERC4337并不冲突，你可以在SCA里同时实现ELN和ERC4337。
 
 从实测来看，ELN更简单更省gas。
 

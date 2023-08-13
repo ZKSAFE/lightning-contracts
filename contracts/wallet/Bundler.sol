@@ -54,32 +54,32 @@ contract Bundler is IUniswapV3FlashCallback {
     }
 
 
-    function executeOperationReturnIncreases(
+    function executeOperationReturnChanges(
         address wallet,
         bytes calldata data,
         address[] calldata retTokens
-    ) public onlyBundlerManager returns (uint[] memory increases){
-        uint[] memory beforeBalances = new uint[](retTokens.length);
+    ) public onlyBundlerManager returns (int[] memory changes){
+        int[] memory beforeBalances = new int[](retTokens.length);
         uint8 i;
         for (i = 0; i<retTokens.length; i++) {
             if (retTokens[i] == address(0)) {
-                beforeBalances[i] = wallet.balance;
+                beforeBalances[i] = int(wallet.balance);
             } else {
-                beforeBalances[i] = IERC20(retTokens[i]).balanceOf(wallet);
+                beforeBalances[i] = int(IERC20(retTokens[i]).balanceOf(wallet));
             }
         }
 
         executeOperation(wallet, data);
 
-        increases = new uint[](retTokens.length);
+        changes = new int[](retTokens.length);
         for (i = 0; i<retTokens.length; i++) {
              if (retTokens[i] == address(0)) {
-                increases[i] = wallet.balance - beforeBalances[i];
+                changes[i] = int(wallet.balance) - beforeBalances[i];
             } else {
-                increases[i] = IERC20(retTokens[i]).balanceOf(wallet) - beforeBalances[i];
+                changes[i] = int(IERC20(retTokens[i]).balanceOf(wallet)) - beforeBalances[i];
             }
         }
-        return increases;
+        return changes;
     }
 
 

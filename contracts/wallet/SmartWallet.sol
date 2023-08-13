@@ -3,13 +3,16 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./SocialRecovery.sol";
 
-contract SmartWallet is ReentrancyGuard, SocialRecovery {
+contract SmartWallet is ReentrancyGuard, SocialRecovery, IERC1271 {
     using ECDSA for bytes32;
 
-    event BundlerChanged(address indexed previousBundler, address indexed newBundler);
+    event BundlerChanged(
+        address indexed previousBundler,
+        address indexed newBundler
+    );
 
     uint32 public valid = 1; //to make AtomSign invalid
 
@@ -24,23 +27,41 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
         );
         _;
     }
-    
+
     constructor(address _owner, address _bundler) SocialRecovery(_owner) {
         bundler = _bundler;
     }
 
     receive() external payable {}
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
         return
             super.supportsInterface(interfaceId) ||
-            interfaceId == this.atomCall.selector
-                ^ this.atomSignCall.selector
-                ^ this.makeAtomSignInvalid.selector;
+            interfaceId ==
+            this.atomCall.selector ^
+                this.atomSignCall.selector ^
+                this.makeAtomSignInvalid.selector;
     }
 
     /**
-     * if you're the owner and also the bundler, you can call by youself
+     * @notice Verifies that the signer is the owner of the signing contract.
+     */
+    function isValidSignature(
+        bytes32 _hash,
+        bytes calldata _signature
+    ) external view override returns (bytes4) {
+        // Validate signatures
+        if (_hash.toEthSignedMessageHash().recover(_signature) == owner) {
+            return 0x1626ba7e;
+        } else {
+            return 0xffffffff;
+        }
+    }
+
+    /**
+     * If you're the owner and also the bundler, you can call by youself
      */
     function atomCall(
         bytes calldata atomCallbytes
@@ -50,12 +71,14 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
 
     function _doAtomCall(bytes calldata atomCallbytes) private {
         uint i;
-        while(i < atomCallbytes.length) {
-            address to = address(uint160(bytes20(atomCallbytes[i:i+20])));
-            uint value = uint(bytes32(atomCallbytes[i+20:i+52]));
-            uint len = uint(bytes32(atomCallbytes[i+52:i+84]));
+        while (i < atomCallbytes.length) {
+            address to = address(uint160(bytes20(atomCallbytes[i:i + 20])));
+            uint value = uint(bytes32(atomCallbytes[i + 20:i + 52]));
+            uint len = uint(bytes32(atomCallbytes[i + 52:i + 84]));
 
-            (bool success, bytes memory result) = to.call{value: value}(atomCallbytes[i+84:i+84+len]);
+            (bool success, bytes memory result) = to.call{value: value}(
+                atomCallbytes[i + 84:i + 84 + len]
+            );
             if (!success) {
                 assembly {
                     revert(add(result, 32), mload(result))
@@ -67,7 +90,7 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
     }
 
     /**
-     * multiple operations in a sign, with atomic(all successed or all failed)
+     * Multiple operations in one sign, with atomic(all successed or all failed)
      * owner to sign, bundler to call
      */
     function atomSignCall(
@@ -94,26 +117,28 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery {
 
         usedMsgHashes[msgHash] = true;
     }
-    
+
     /**
      * if you signed something then regretted, make it invalid
      */
     function makeAtomSignInvalid() public onlyOwnerAndOrignal {
-        valid++;
+        valid = uint32(uint(blockhash(block.number)));
     }
 
     /**
      * only owner can change bundler, before that, guardians need to be empty
      */
     function changeBundler(address newBundler) external onlyOwnerAndOrignal {
-        require(needGuardiansNum == 0, "changeBundler: let the guardians quit first");
-        
+        require(
+            needGuardiansNum == 0,
+            "changeBundler: let the guardians quit first"
+        );
+
         address oldBundler = bundler;
         bundler = newBundler;
 
-        valid++; //makeAtomSignInvalid
+        makeAtomSignInvalid(); //makeAtomSignInvalid
 
         emit BundlerChanged(oldBundler, newBundler);
     }
-
 }
