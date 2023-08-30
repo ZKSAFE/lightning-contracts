@@ -4,13 +4,15 @@ pragma solidity ^0.8.0;
 import "./ISendPort.sol";
 import "hardhat/console.sol";
 
-contract SendPort is ISendPort {
+contract OptimizedPort is ISendPort {
     uint public constant PACK_INTERVAL = 6000;
     uint public constant MAX_PACKAGE_MESSAGES = 3000;
 
     Package public pendingPackage;
 
     mapping(uint => Package) public packedPackage;
+
+    mapping(bytes32 => mapping(bytes32 => bytes32)) public findHash;
 
     constructor() {
         pendingPackage = Package(0, bytes32(0), new bytes32[](0), new uint[](0), block.timestamp, 0);
@@ -22,6 +24,7 @@ contract SendPort is ISendPort {
         );
         pendingPackage.leaves.push(leaf);
         pendingPackage.toChainIds.push(toChainId);
+        updateRoot();
 
         emit MsgHashAdded(leaf, toChainId, msg.sender);
 
@@ -33,6 +36,15 @@ contract SendPort is ISendPort {
         if (pendingPackage.createTime + PACK_INTERVAL <= block.timestamp) {
             _pack();
         }
+    }
+
+
+    function updateRoot() internal {
+        bytes32[] memory _leaves = pendingPackage.leaves;
+        while (_leaves.length > 1) {
+            _leaves = _computeLeaves(_leaves);
+        }
+        pendingPackage.root = _leaves[0];
     }
 
     function pack() public {
@@ -51,11 +63,6 @@ contract SendPort is ISendPort {
     }
 
     function _pack() internal {
-        bytes32[] memory _leaves = pendingPackage.leaves;
-        while (_leaves.length > 1) {
-            _leaves = _computeLeaves(_leaves);
-        }
-        pendingPackage.root = _leaves[0];
         pendingPackage.packedTime = block.timestamp;
 
         packedPackage[pendingPackage.index] = pendingPackage;
@@ -64,7 +71,7 @@ contract SendPort is ISendPort {
         pendingPackage = Package(pendingPackage.index + 1, bytes32(0), new bytes32[](0), new uint[](0), pendingPackage.packedTime, 0);
     }
 
-    function _computeLeaves(bytes32[] memory _leaves) pure internal returns (bytes32[] memory _nextLeaves) {
+    function _computeLeaves(bytes32[] memory _leaves) internal returns (bytes32[] memory _nextLeaves) {
         if (_leaves.length % 2 == 0) {
             _nextLeaves = new bytes32[](_leaves.length / 2);
             bytes32 computedHash;
@@ -85,16 +92,21 @@ contract SendPort is ISendPort {
         }
     }
 
-    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+    function _hashPair(bytes32 a, bytes32 b) private returns (bytes32) {
         return a < b ? _efficientHash(a, b) : _efficientHash(b, a);
     }
 
-    function _efficientHash(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
+    function _efficientHash(bytes32 a, bytes32 b) private returns (bytes32 value) {
+        // if (findHash[a][b] != bytes32(0)) {
+        //     return findHash[a][b];
+        // }
+
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, a)
             mstore(0x20, b)
             value := keccak256(0x00, 0x40)
         }
+        // findHash[a][b] = value;
     }
 }

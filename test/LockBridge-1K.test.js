@@ -3,7 +3,7 @@ const { m, d, b, n, s } = require('./help/BigNumberHelp')
 const { MerkleTree } = require('merkletreejs')
 const keccak256 = require('keccak256')
 
-describe('LockBridge.test', function () {
+describe('LockBridge-1K.test', function () {
     let chainId
     let accounts
     let provider
@@ -38,10 +38,10 @@ describe('LockBridge.test', function () {
         await toBridge.deployed()
         console.log('toBridge deployed:', toBridge.address)
 
-        await usdt.mint(accounts[0].address, m(1000, 18))
+        await usdt.mint(accounts[0].address, m(10000, 18))
         console.log('usdt mint to accounts[0]', d(await usdt.balanceOf(accounts[0].address), 18))
 
-        await usdt.mint(toBridge.address, m(1000, 18))
+        await usdt.mint(toBridge.address, m(10000, 18))
         console.log('usdt mint to toBridge', d(await usdt.balanceOf(toBridge.address), 18))
 
         await toBridge.setTrustBridge(chainId, fromBridge.address)
@@ -50,14 +50,13 @@ describe('LockBridge.test', function () {
     })
 
     it('transferTo', async function () {
-        for (let i=1; i<=4; i++) {
-            let amount = s(m(i*10, 18))
+        for (let i=1; i<=100; i++) {
+            let amount = s(m(i, 18))
             await usdt.approve(fromBridge.address, amount)
-            await fromBridge.transferTo(chainId, usdt.address, amount, accounts[i].address)
+            let estimateGas = await fromBridge.estimateGas.transferTo(chainId, usdt.address, amount, accounts[1].address)
+            console.log('transferTo estimateGas', estimateGas)
+            await fromBridge.transferTo(chainId, usdt.address, amount, accounts[1].address)
         }
-
-        let pendingPackage = await sendPort.getPendingPackage()
-        console.log('pendingPackage:', pendingPackage)
 
         await print()
     })
@@ -65,15 +64,17 @@ describe('LockBridge.test', function () {
     let rootIndex
     let crossPackage
     it('cross', async function () {
+        let estimateGas = await sendPort.estimateGas.pack()
+        console.log('pack estimateGas', estimateGas) //5775334
         await sendPort.pack()
 
         let pendingPackage = await sendPort.pendingPackage()
         console.log('pendingPackage:', pendingPackage)
 
         rootIndex = n(pendingPackage.index) - 1
-        crossPackage = await sendPort.getPackedPackage(rootIndex)
-        console.log('crossPackage:', crossPackage)
-        
+        crossPackage = await sendPort.packedPackage(rootIndex)
+        console.log('crossPackage:', rootIndex, crossPackage)
+
         await toBridge.receivePackages([{
             fromChainId: chainId,
             rootIndex: rootIndex,
@@ -82,17 +83,25 @@ describe('LockBridge.test', function () {
         console.log('toBridge.receivePackages() done')
     })
 
+
     it('transferFrom', async function () {
-        let merkleTree = new MerkleTree(crossPackage.leaves, keccak256, { hashLeaves: false, sortPairs: true })
+        let leaves = []
+        for (let i = 0; i < 10; i++) {
+            let start = 10 * i;
+            let ls = await fromBridge.getLeaves(rootIndex, start, 10)
+            console.log('ls:', ls)
+            leaves = leaves.concat(ls)
+        }
+        console.log('leaves:', leaves)
+
+        let merkleTree = new MerkleTree(leaves, keccak256, { hashLeaves: false, sortPairs: true })
         console.log('merkleTree.getHexRoot:', merkleTree.getHexRoot())
         console.log('toBridge.getRoot():', await toBridge.getRoot(chainId, rootIndex))
 
-        for (let i=1; i<=4; i++) {
-            let leaf = crossPackage.leaves[i-1]
-            let proof = merkleTree.getHexProof(leaf)
-            let amount = s(m(i*10, 18))
-            await toBridge.connect(accounts[i]).transferFrom(chainId, rootIndex, proof, usdt.address, amount, accounts[i].address)
-        }
+        let leaf = leaves[0]
+        let proof = merkleTree.getHexProof(leaf)
+        let amount = s(m(1, 18))
+        await toBridge.connect(accounts[1]).transferFrom(chainId, rootIndex, proof, usdt.address, amount, accounts[1].address)
 
         await print()
     })

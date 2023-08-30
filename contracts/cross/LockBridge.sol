@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./SendPort.sol";
+import "./ISendPort.sol";
 import "./ReceivePort.sol";
 
 contract LockBridge is ReceivePort, Ownable {
     using SafeERC20 for IERC20;
 
-    SendPort public sendPort;
+    ISendPort public sendPort;
 
     mapping(bytes32 => bool) public usedMsgHashes;
 
@@ -19,7 +19,7 @@ contract LockBridge is ReceivePort, Ownable {
     mapping(address => address) public crossPairs;
 
     constructor(address sendPortAddr) {
-        sendPort = SendPort(sendPortAddr);
+        sendPort = ISendPort(sendPortAddr);
     }
 
     function setTrustBridge(uint chainId, address bridge) public onlyOwner {
@@ -28,6 +28,15 @@ contract LockBridge is ReceivePort, Ownable {
 
     function setCrossPair(address fromTokenAddr, address toTokenAddr) public onlyOwner {
         crossPairs[fromTokenAddr] = toTokenAddr;
+    }
+
+    function getLeaves(uint index, uint start, uint num) view public returns(bytes32[] memory) {
+        ISendPort.Package memory p = sendPort.getPackedPackage(index);
+        bytes32[] memory result = new bytes32[](num);
+        for (uint i = 0; i < p.leaves.length && i < num; i++) {
+            result[i] = p.leaves[i + start];
+        }
+        return result;
     }
 
     function transferTo(

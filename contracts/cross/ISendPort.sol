@@ -11,7 +11,7 @@ interface ISendPort {
         bytes32 root;
         bytes32[] leaves;
         uint[] toChainIds;
-        uint initTime;
+        uint createTime;
         uint packedTime;
     }
 
