@@ -3,7 +3,7 @@ const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-describe('SmartWallet-Bundler-test', function () {
+describe('SmartWallet-Bundler.test', function () {
     let accounts
     let provider
     let wallet

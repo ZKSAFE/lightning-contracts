@@ -1,7 +1,7 @@
 const { BigNumber, utils } = require('ethers')
 const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
-describe('SmartWallet-BundlerManager-test', function () {
+describe('SmartWallet-BundlerManager.test', function () {
     let accounts
     let provider
     let factory

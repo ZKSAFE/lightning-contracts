@@ -1,7 +1,7 @@
 const { BigNumber, utils } = require('ethers')
 const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
-describe('SocialRecovery-test', function () {
+describe('SocialRecovery.test', function () {
     let accounts
     let provider
     let factory
