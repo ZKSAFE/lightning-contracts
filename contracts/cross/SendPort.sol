@@ -6,51 +6,56 @@ import "hardhat/console.sol";
 
 contract SendPort is ISendPort {
     uint public constant PACK_INTERVAL = 6000;
-    uint public constant MAX_PACKAGE_MESSAGES = 3000;
+    uint public constant MAX_PACKAGE_MESSAGES = 100;
 
-    Package public pendingPackage;
+    uint public pendingIndex = 0;
 
-    mapping(uint => Package) public packedPackage;
+    mapping(uint => Package) public packages;
 
     constructor() {
-        pendingPackage = Package(0, bytes32(0), new bytes32[](0), new uint[](0), block.timestamp, 0);
+        packages[0] = Package(0, bytes32(0), new bytes32[](0), new uint[](0), block.timestamp, 0);
     }
 
     function addMsgHash(bytes32 msgHash, uint toChainId) public {
         bytes32 leaf = keccak256(
             abi.encodePacked(msgHash, msg.sender)
         );
+        Package storage pendingPackage = packages[pendingIndex];
         pendingPackage.leaves.push(leaf);
         pendingPackage.toChainIds.push(toChainId);
 
         emit MsgHashAdded(leaf, toChainId, msg.sender);
 
         if (pendingPackage.leaves.length >= MAX_PACKAGE_MESSAGES) {
+            console.log("MAX_PACKAGE_MESSAGES", pendingPackage.leaves.length);
             _pack();
             return;
         }
 
+        // console.log("block.timestamp", block.timestamp);
         if (pendingPackage.createTime + PACK_INTERVAL <= block.timestamp) {
+            console.log("PACK_INTERVAL", pendingPackage.createTime, block.timestamp);
             _pack();
         }
     }
 
     function pack() public {
-        // testing jump
+        // testing ignore
         // require(pendingPackage.createTime + PACK_INTERVAL <= block.timestamp, "SendPort::pack: pack interval too short");
 
        _pack();
     }
 
     function getPackedPackage(uint index) public view returns (Package memory) {
-        return packedPackage[index];
+        return packages[index];
     }
 
     function getPendingPackage() public view returns (Package memory) {
-        return pendingPackage;
+        return packages[pendingIndex];
     }
 
     function _pack() internal {
+        Package storage pendingPackage = packages[pendingIndex];
         bytes32[] memory _leaves = pendingPackage.leaves;
         while (_leaves.length > 1) {
             _leaves = _computeLeaves(_leaves);
@@ -58,10 +63,10 @@ contract SendPort is ISendPort {
         pendingPackage.root = _leaves[0];
         pendingPackage.packedTime = block.timestamp;
 
-        packedPackage[pendingPackage.index] = pendingPackage;
         emit Packed(pendingPackage.index, pendingPackage.packedTime, pendingPackage.root);
 
-        pendingPackage = Package(pendingPackage.index + 1, bytes32(0), new bytes32[](0), new uint[](0), pendingPackage.packedTime, 0);
+        pendingIndex = pendingPackage.index + 1;
+        packages[pendingIndex] = Package(pendingIndex, bytes32(0), new bytes32[](0), new uint[](0), pendingPackage.packedTime, 0);
     }
 
     function _computeLeaves(bytes32[] memory _leaves) pure internal returns (bytes32[] memory _nextLeaves) {

@@ -48,7 +48,7 @@ contract OptimizedPort is ISendPort {
     }
 
     function pack() public {
-        // testing jump
+        // testing ignore
         // require(pendingPackage.createTime + PACK_INTERVAL <= block.timestamp, "SendPort::pack: pack interval too short");
 
        _pack();

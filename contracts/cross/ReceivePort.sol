@@ -13,7 +13,7 @@ abstract contract ReceivePort is IReceivePort {
     function receivePackages(Package[] calldata packages) public {
         for (uint i = 0; i < packages.length; i++) {
             Package calldata p = packages[i];
-            require(roots[p.fromChainId][p.rootIndex] == bytes32(0), "ReceivePort::receive: package already exist");
+            require(roots[p.fromChainId][p.rootIndex] == bytes32(0), "ReceivePort::receivePackages: package already exist");
             roots[p.fromChainId][p.rootIndex] = p.root;
 
             emit PackageReceived(p.fromChainId, p.rootIndex, p.root);

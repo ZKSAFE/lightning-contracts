@@ -51,10 +51,12 @@ describe('LockBridge-1K.test', function () {
 
     it('transferTo', async function () {
         for (let i=1; i<=100; i++) {
-            let amount = s(m(i, 18))
+            let amount = s(m(i, 16))
             await usdt.approve(fromBridge.address, amount)
-            let estimateGas = await fromBridge.estimateGas.transferTo(chainId, usdt.address, amount, accounts[1].address)
-            console.log('transferTo estimateGas', estimateGas)
+            if (i == 100) {
+                let estimateGas = await fromBridge.estimateGas.transferTo(chainId, usdt.address, amount, accounts[1].address)
+                console.log('transferTo estimateGas', estimateGas) //i=100: 5890793 520347 31337
+            }
             await fromBridge.transferTo(chainId, usdt.address, amount, accounts[1].address)
         }
 
@@ -65,14 +67,14 @@ describe('LockBridge-1K.test', function () {
     let crossPackage
     it('cross', async function () {
         let estimateGas = await sendPort.estimateGas.pack()
-        console.log('pack estimateGas', estimateGas) //5775334
+        console.log('pack estimateGas', estimateGas) //5775334 433649
         await sendPort.pack()
 
-        let pendingPackage = await sendPort.pendingPackage()
+        let pendingPackage = await sendPort.getPendingPackage()
         console.log('pendingPackage:', pendingPackage)
 
-        rootIndex = n(pendingPackage.index) - 1
-        crossPackage = await sendPort.packedPackage(rootIndex)
+        rootIndex = 0
+        crossPackage = await sendPort.getPackedPackage(rootIndex)
         console.log('crossPackage:', rootIndex, crossPackage)
 
         await toBridge.receivePackages([{
@@ -100,7 +102,7 @@ describe('LockBridge-1K.test', function () {
 
         let leaf = leaves[0]
         let proof = merkleTree.getHexProof(leaf)
-        let amount = s(m(1, 18))
+        let amount = s(m(1, 16))
         await toBridge.connect(accounts[1]).transferFrom(chainId, rootIndex, proof, usdt.address, amount, accounts[1].address)
 
         await print()
