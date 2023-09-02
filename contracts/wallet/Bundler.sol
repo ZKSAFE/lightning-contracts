@@ -17,6 +17,14 @@ contract Bundler is IUniswapV3FlashCallback {
 
     address internal _callTo;
 
+    Call[] internal _sandwichCalls;
+
+    struct Call {
+        address to;
+        uint value;
+        bytes data;
+    }
+
     modifier onlyBundlerManager() {
         require(
             bundlerManager == msg.sender || IOwner(bundlerManager).owner() == msg.sender,
@@ -33,6 +41,10 @@ contract Bundler is IUniswapV3FlashCallback {
 
     receive() external payable {}
 
+
+    ////////////////////////////
+    ////  executeOperation  ////
+    ////////////////////////////
 
     function executeOperation(
         address wallet,
@@ -98,6 +110,68 @@ contract Bundler is IUniswapV3FlashCallback {
         }
     }
 
+
+    ///////////////////////////
+    ////  executeSandwich  ////
+    ///////////////////////////
+
+    function executeSandwich(
+        bytes calldata sandwichCallBytes,
+        address wallet,
+        bytes calldata funcData
+    ) public onlyBundlerManager {
+        _callTo = wallet;
+
+        uint i;
+        while (i < sandwichCallBytes.length) {
+            
+            address to = address(uint160(bytes20(sandwichCallBytes[i:i + 20])));
+            uint value = uint(bytes32(sandwichCallBytes[i + 20:i + 52]));
+            uint len = uint(bytes32(sandwichCallBytes[i + 52:i + 84]));
+            bytes calldata data = sandwichCallBytes[i + 84:i + 84 + len];
+
+            _sandwichCalls.push(Call(to, value, data));
+
+            i += 84 + len;
+        }
+
+
+        (bool success, bytes memory result) = _callTo.call{
+            value: 0
+        }(funcData);
+
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
+
+        _callTo = address(0);
+    }
+
+
+    function sandwichCallback() external {
+        require(msg.sender == _callTo, "sandwichCallback: Only _callTo");
+
+        for (uint i = 0; i < _sandwichCalls.length; i++) {
+            Call memory call =  _sandwichCalls[i];
+            (bool success, bytes memory result) = call.to.call{value: call.value}(
+                call.data
+            );
+            if (!success) {
+                assembly {
+                    revert(add(result, 32), mload(result))
+                }
+            }
+        }
+
+        delete _sandwichCalls;
+    }
+
+
+    /////////////////////
+    ////  flashloan  ////
+    /////////////////////
 
     function executeFlash(
         address pool,

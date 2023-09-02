@@ -15,6 +15,13 @@ module.exports = {
 				process.env.ETH_PK_0,
 			]
 		},
+		eth_goerli: {
+			url: 'https://eth-goerli.g.alchemy.com/v2/demo',
+			chainId: 5,
+			accounts: [
+				process.env.V2_TEST_2_PK,
+			]
+		},
 		polygon: {
 			url: 'https://matic-mainnet.chainstacklabs.com',
 			chainId: 137,
