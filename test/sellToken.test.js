@@ -23,22 +23,12 @@ const NATIVE_ETH = new Ether(ChainId)
 const WETH_TOKEN = new Token(ChainId, WETH_CONTRACT_ADDRESS, 18, 'WETH', 'Wrapped Ether')
 const USDC_TOKEN = new Token(ChainId, USDC_CONTRACT_ADDRESS, 6, 'USDC', 'USD Coin')
 
-const ERC20_ABI = [
-    "function balanceOf(address owner) view returns (uint256)",
-    "function transfer(address to, uint amount) returns (bool)",
-    "function deposit() public payable",
-    "function approve(address spender, uint256 amount) returns (bool)",
-]
-
-const WETH_ABI = [
-    'function deposit() payable',
-    'function withdraw(uint wad) public',
-]
-
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
+const MAX_UINT256 = b('115792089237316195423570985008687907853269984665640564039457584007913129639935')
 
-describe('trade.test', function () {
+
+describe('sellToken.test', function () {
     let chainId
     let accounts
     let signer
@@ -114,7 +104,8 @@ describe('trade.test', function () {
     // })
    
    
-    let tokenIn = NATIVE_ETH
+
+    let tokenIn = WETH_TOKEN //NATIVE_ETH
     let tokenOut = USDC_TOKEN
     let amountIn = m(1, tokenIn.decimals)
     let amountOut
@@ -200,63 +191,25 @@ describe('trade.test', function () {
     it('place order', async function () {
         const ERC20 = await ethers.getContractFactory('MockERC20')
         const Bundler = await ethers.getContractFactory('Bundler')
-
-        let callArr = []
-        let to = '0x'
-        let value = 0
-        let data = '0x'
-
-        //send amountIn ETH to bundler
-        to = bundler.address
-        value = amountIn
-        data = '0x'
-        callArr.push({to, value, data})
-
-        //call bundler.bundlerCallback
-        to = bundler.address
-        value = 0
-        data = Bundler.interface.encodeFunctionData('sandwichCallback()', [])
-        callArr.push({to, value, data})
-      
-        //want amountOut-2 USDC from bundler
-        to = bundler.address
-        value = 0
-        let wantUSDCAmount = amountOut.sub(m(2, USDC_TOKEN.decimals))
-        data = ERC20.interface.encodeFunctionData('transfer(address,uint256)', [wallet.address, wantUSDCAmount])
-        data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [usdc.address, 0, data])
-        callArr.push({to, value, data})
-        
-        atomSignParams = await atomSign(accounts[1], wallet.address, callArr)
-        console.log('atomSign done')
-    })
-
-
-    it('bundler executeSandwich', async function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
-        const ERC20 = await ethers.getContractFactory('MockERC20')
-        const Bundler = await ethers.getContractFactory('Bundler')
 
-        let p = atomSignParams
-        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallBytes, p.deadline, p.signature])
-        
         let callArr = []
         let to = '0x'
         let value = 0
         let data = '0x'
 
-        //bundler: ERC20(ExactIn) swap to USD
-        //1.approve
-        // if (tokenInAddr !== NATIVE_ETH_ADDRESS) {
-        //     let token = ERC20.attach(tokenInAddr)
-        //     let allowance = await token.allowance(subBundler.address, chainInfo.SwapRouterAddr)
-        //     if (allowance.lt(amountIn)) {
-        //         to = tokenInAddr
-        //         value = 0
-        //         data = ERC20.interface.encodeFunctionData('approve(address,uint256)', [chainInfo.SwapRouterAddr, MAX_UINT256])
-        //         callArr.push({to, value, data})
-        //         console.log('[token_usd][executeOrder] add approve')
-        //     }
-        // }
+        //1. Token swap(ExactIn) USDC to Bundler
+        //approve
+        if (tokenIn.isToken) {
+            let token = ERC20.attach(tokenIn.address)
+            let allowance = await token.allowance(wallet.address, SWAP_ROUTER_ADDRESS)
+            if (allowance.lt(amountIn)) {
+                to = tokenIn.address
+                value = 0
+                data = ERC20.interface.encodeFunctionData('approve(address,uint256)', [SWAP_ROUTER_ADDRESS, amountIn])
+                callArr.push({to, value, data})
+            }
+        }
 
         //swap
         let uncheckedTrade = Trade.createUncheckedTrade({
@@ -283,11 +236,31 @@ describe('trade.test', function () {
         value = methodParameters.value
         data = methodParameters.calldata
         callArr.push({ to, value, data })
-        let sandwichCallBytes = convertCallArrToCallBytes(callArr)
 
-        let estimateGas = await bundler.estimateGas.executeSandwich(sandwichCallBytes, wallet.address, calldata)
-        await bundler.executeSandwich(sandwichCallBytes, wallet.address, calldata)
-        console.log('executeSandwich done, gasCost:', estimateGas) //527553
+        //2. want (amountOut - 2) USDC from Bundler
+        to = bundler.address
+        value = 0
+        let wantUSDCAmount = amountOut.sub(m(2, USDC_TOKEN.decimals))
+        data = ERC20.interface.encodeFunctionData('transfer(address,uint256)', [wallet.address, wantUSDCAmount])
+        data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [usdc.address, 0, data])
+        callArr.push({to, value, data})
+        
+        atomSignParams = await atomSign(accounts[1], wallet.address, callArr)
+        console.log('atomSign done')
+    })
+
+
+    it('bundler executeOperation', async function () {
+        const SmartWallet = await ethers.getContractFactory('SmartWallet')
+        const ERC20 = await ethers.getContractFactory('MockERC20')
+        const Bundler = await ethers.getContractFactory('Bundler')
+
+        let p = atomSignParams
+        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallBytes, p.deadline, p.signature])
+        
+        let estimateGas = await bundler.estimateGas.executeOperation(wallet.address, calldata)
+        await bundler.executeOperation(wallet.address, calldata)
+        console.log('executeOperation done, gasCost:', estimateGas) //239105
 
         await print()
     })
@@ -329,10 +302,10 @@ describe('trade.test', function () {
     async function print() {
         console.log('')
         
-        console.log('account0 usdc:', d(await usdc.balanceOf(accounts[0].address), USDC_TOKEN.decimals), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
-        console.log('account1 usdc:', d(await usdc.balanceOf(accounts[1].address), USDC_TOKEN.decimals), 'eth:', d(await provider.getBalance(accounts[1].address), 18))
-        console.log('bundler usdc:', d(await usdc.balanceOf(bundler.address), USDC_TOKEN.decimals), 'eth:', d(await provider.getBalance(bundler.address), 18))
-        console.log('wallet usdc:', d(await usdc.balanceOf(wallet.address), USDC_TOKEN.decimals), 'eth:', d(await provider.getBalance(wallet.address), 18))
+        console.log('account0 usdc:', d(await usdc.balanceOf(accounts[0].address), USDC_TOKEN.decimals), 'weth:', d(await weth.balanceOf(accounts[0].address), 18), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
+        console.log('account1 usdc:', d(await usdc.balanceOf(accounts[1].address), USDC_TOKEN.decimals), 'weth:', d(await weth.balanceOf(accounts[1].address), 18), 'eth:', d(await provider.getBalance(accounts[1].address), 18))
+        console.log('bundler usdc:', d(await usdc.balanceOf(bundler.address), USDC_TOKEN.decimals), 'weth:', d(await weth.balanceOf(bundler.address), 18), 'eth:', d(await provider.getBalance(bundler.address), 18))
+        console.log('wallet usdc:', d(await usdc.balanceOf(wallet.address), USDC_TOKEN.decimals), 'weth:', d(await weth.balanceOf(wallet.address), 18), 'eth:', d(await provider.getBalance(wallet.address), 18))
 
         console.log('')
     }
