@@ -16,7 +16,7 @@ module.exports = {
 			]
 		},
 		eth_goerli: {
-			url: 'https://eth-goerli.g.alchemy.com/v2/demo',
+			url: 'https://rpc.ankr.com/eth_goerli',
 			chainId: 5,
 			accounts: [
 				process.env.V2_TEST_2_PK,
