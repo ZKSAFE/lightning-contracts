@@ -23,8 +23,8 @@ contract SocialRecovery is IERC165 {
     address[] public doneGuardians;
     address public prepareOwner;
 
-    modifier onlyOwnerAndOrignal() {
-        require(owner == msg.sender || original == msg.sender, "onlyOwnerAndOrignal: caller is not the owner");
+    modifier onlyOwnerAndOriginal() {
+        require(owner == msg.sender || original == msg.sender, "onlyOwnerAndOriginal: caller is not the owner");
         _;
     }
 
@@ -33,8 +33,8 @@ contract SocialRecovery is IERC165 {
         _;
     }
 
-    modifier onlyOrignal() {
-        require(original == msg.sender, "onlyOrignal: caller is not the original");
+    modifier onlyOriginal() {
+        require(original == msg.sender, "onlyOriginal: caller is not the original");
         _;
     }
 
@@ -74,7 +74,7 @@ contract SocialRecovery is IERC165 {
     function setSocialRecovery(
         address[] memory _guardians,
         uint _needGuardiansNum
-    ) external onlyOwnerAndOrignal {
+    ) external onlyOwnerAndOriginal {
         require(needGuardiansNum == 0, "setSocialRecovery: let the guardians quit first");
         require(
             _needGuardiansNum > 0 && _needGuardiansNum <= _guardians.length,
@@ -92,7 +92,7 @@ contract SocialRecovery is IERC165 {
     /**
      * owner can transfer ownership by himself
      */
-    function transferOwnership(address newOwner) external onlyOwnerAndOrignal {
+    function transferOwnership(address newOwner) external onlyOwnerAndOriginal {
         _transferOwnership(newOwner);
     }
 

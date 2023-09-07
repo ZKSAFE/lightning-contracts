@@ -2,6 +2,9 @@ const { BigNumber } = require('ethers')
 
 
 exports.m = function(num, decimals) {
+    if (decimals <= 4) {
+        return BigNumber.from(parseInt(num)).mul(BigNumber.from(10).pow(decimals))
+    }
     return BigNumber.from(parseInt(num * 10000)).mul(BigNumber.from(10).pow(decimals - 4))
 }
 

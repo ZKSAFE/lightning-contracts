@@ -38,7 +38,7 @@ const WETH_ABI = [
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 
-describe('trade3.test', function () {
+describe('SandwichTrade.test', function () {
     let chainId
     let accounts
     let signer
