@@ -16,11 +16,11 @@ const USDT_CONTRACT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 const PEPE_CONTRACT_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933'
 
 //localhost fork from mainnet
-const bundlerManagerAddr = '0x9CC8B5379C40E24F374cd55973c138fff83ed214'
-const bundlerAddr = '0xD7a17dB0EC2a1D96A327bfC0E8FC8E66b4540324'
-const factoryAddr = '0xd3b893cd083f07Fe371c1a87393576e7B01C52C6'
-const walletAddr = '0x77f950fdae6198Cb89b4325B0F72960b9C6f0509'
-const walletHelperAddr = '0x9D3999af03458c11C78F7e6C0fAE712b455D4e33'
+const bundlerManagerAddr = '0x0B1a87021ec75fBaE919b1e86b2B1335FFC8F4d3'
+const bundlerAddr = '0x5434e8FC67e9285d0DA256f81359610faF34Bc02'
+const factoryAddr = '0x18eb8AF587dcd7E4F575040F6D800a6B5Cef6CAf'
+const walletAddr = '0x94f4C1743d0a8d4F1b7792DD34Cf5A9F5ea97BCD'
+const walletHelperAddr = '0xd6096fbEd8bCc461d06b0C468C8b1cF7d45dC92d'
 
 const NATIVE_ETH = new Ether(ChainId)
 const WETH_TOKEN = new Token(ChainId, WETH_CONTRACT_ADDRESS, 18, 'WETH', 'Wrapped Ether')
@@ -52,7 +52,7 @@ describe('USDsBuyPepe.test', function () {
         console.log('chainId', chainId)
     })
 
-    // it('deploy BundlerManager Bundler WalletFactory', async function () {
+    // it('deploy BundlerManager Bundler WalletFactory WalletHelperV1', async function () {
     //     const BundlerManager = await ethers.getContractFactory('BundlerManager')
     //     bundlerManager = await BundlerManager.deploy()
     //     await bundlerManager.deployed()
@@ -95,6 +95,9 @@ describe('USDsBuyPepe.test', function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
         wallet = SmartWallet.attach(walletAddr)
 
+        const WalletHelperV1 = await ethers.getContractFactory('WalletHelperV1')
+        walletHelper = WalletHelperV1.attach(walletHelperAddr)
+
         await print()
     })
 
@@ -116,7 +119,7 @@ describe('USDsBuyPepe.test', function () {
         
     //     let to = usdt.address
     //     let value = 0
-    //     let data = ERC20.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1625, 6)])
+    //     let data = ERC20.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1610, 6)])
     //     let callArr = [{ to, value, data }]
         
     //     let p  = await atomSign(accounts[1], wallet.address, callArr)
@@ -245,7 +248,7 @@ describe('USDsBuyPepe.test', function () {
         //1. swapStableCoins 
         to = wallet.address
         value = 0
-        let decimals6Total = amountIn.div(m(10, tokenIn.decimals - 6))
+        let decimals6Total = amountIn.div(m(1, tokenIn.decimals - 6))
         console.log('decimals6Total:', decimals6Total)
         let swapStableCoinsData = WalletHelperV1.interface.encodeFunctionData('swapStableCoins(address[],uint256,address)', [
             [USDT_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS], decimals6Total, USDC_CONTRACT_ADDRESS

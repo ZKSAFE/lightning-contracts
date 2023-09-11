@@ -25,18 +25,29 @@ describe('SmartWallet-Bundler.test', function () {
         usdt = await MockERC20.deploy('MockUSDT', 'USDT')
         await usdt.deployed()
         console.log('usdt deployed:', usdt.address)
-        await usdt.mint(accounts[0].address, m(10000, 18))
-        console.log('usdt mint to accounts[0]', d(await usdt.balanceOf(accounts[0].address), 18))
-        await usdt.mint(accounts[1].address, m(10000, 18))
-        console.log('usdt mint to accounts[1]', d(await usdt.balanceOf(accounts[1].address), 18))
+        await usdt.setDecimals(6)
+        await usdt.mint(accounts[0].address, m(10000, 6))
+        console.log('usdt mint to accounts[0]', d(await usdt.balanceOf(accounts[0].address), 6))
+        await usdt.mint(accounts[1].address, m(10000, 6))
+        console.log('usdt mint to accounts[1]', d(await usdt.balanceOf(accounts[1].address), 6))
        
         usdc = await MockERC20.deploy('MockUSDC', 'USDC')
         await usdc.deployed()
         console.log('usdc deployed:', usdc.address)
-        await usdc.mint(accounts[0].address, m(10000, 18))
-        console.log('usdc mint to accounts[0]', d(await usdc.balanceOf(accounts[0].address), 18))
-        await usdt.mint(accounts[1].address, m(10000, 18))
-        console.log('usdc mint to accounts[1]', d(await usdc.balanceOf(accounts[1].address), 18))
+        await usdc.setDecimals(6)
+        await usdc.mint(accounts[0].address, m(10000, 6))
+        console.log('usdc mint to accounts[0]', d(await usdc.balanceOf(accounts[0].address), 6))
+        await usdc.mint(accounts[1].address, m(10000, 6))
+        console.log('usdc mint to accounts[1]', d(await usdc.balanceOf(accounts[1].address), 6))
+       
+        dai = await MockERC20.deploy('MockDai', 'DAI')
+        await dai.deployed()
+        console.log('dai deployed:', dai.address)
+        await dai.setDecimals(18)
+        await dai.mint(accounts[0].address, m(10000, 18))
+        console.log('dai mint to accounts[0]', d(await dai.balanceOf(accounts[0].address), 18))
+        await dai.mint(accounts[1].address, m(10000, 18))
+        console.log('dai mint to accounts[1]', d(await dai.balanceOf(accounts[1].address), 18))
     })
 
 
@@ -82,11 +93,14 @@ describe('SmartWallet-Bundler.test', function () {
         await accounts[0].sendTransaction({to: bundler.address, value: m(5, 18)})
         console.log('transfer ETH to', wallet.address)
 
-        await usdt.transfer(wallet.address, m(80, 18))
+        await usdt.transfer(wallet.address, m(80, 6))
         console.log('deposit USDT to', wallet.address)
 
-        await usdc.transfer(wallet.address, m(50, 18))
+        await usdc.transfer(wallet.address, m(50, 6))
         console.log('deposit USDC to', wallet.address)
+
+        await dai.transfer(wallet.address, m(30, 18))
+        console.log('deposit DAI to', wallet.address)
 
         await print()
     })
@@ -104,7 +118,7 @@ describe('SmartWallet-Bundler.test', function () {
         to = wallet.address
         value = 0
         let transferStableCoinsData = WalletHelperV1.interface.encodeFunctionData('transferStableCoins(address[],uint256,address)', [
-            [usdc.address, usdt.address], m(120, 6), bundler.address
+            [dai.address, usdc.address, usdt.address], m(99.1234, 6), bundler.address
         ])
         data = SmartWallet.interface.encodeFunctionData('delegateCall(address,bytes)', [
             walletHelper.address, transferStableCoinsData
@@ -159,10 +173,10 @@ describe('SmartWallet-Bundler.test', function () {
     async function print() {
         console.log('')
         
-        console.log('account0 usdt:', d(await usdt.balanceOf(accounts[0].address), 18), 'usdc:', d(await usdc.balanceOf(accounts[0].address), 18))
-        console.log('account1 usdt:', d(await usdt.balanceOf(accounts[1].address), 18), 'usdc:', d(await usdc.balanceOf(accounts[1].address), 18))
-        console.log('bundler usdt:', d(await usdt.balanceOf(bundler.address), 18), 'usdc:', d(await usdc.balanceOf(bundler.address), 18))
-        console.log('wallet usdt:', d(await usdt.balanceOf(wallet.address), 18), 'usdc:', d(await usdc.balanceOf(wallet.address), 18))
+        console.log('account0 usdt:', d(await usdt.balanceOf(accounts[0].address), 6), 'usdc:', d(await usdc.balanceOf(accounts[0].address), 6), 'dai:', d(await dai.balanceOf(accounts[0].address), 18))
+        console.log('account1 usdt:', d(await usdt.balanceOf(accounts[1].address), 6), 'usdc:', d(await usdc.balanceOf(accounts[1].address), 6), 'dai:', d(await dai.balanceOf(accounts[1].address), 18))
+        console.log('bundler usdt:', d(await usdt.balanceOf(bundler.address), 6), 'usdc:', d(await usdc.balanceOf(bundler.address), 6), 'dai:', d(await dai.balanceOf(bundler.address), 18))
+        console.log('wallet usdt:', d(await usdt.balanceOf(wallet.address), 6), 'usdc:', d(await usdc.balanceOf(wallet.address), 6), 'dai:', d(await dai.balanceOf(wallet.address), 18))
 
         console.log('')
     }

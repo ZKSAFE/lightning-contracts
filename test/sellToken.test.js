@@ -15,10 +15,10 @@ const USDC_CONTRACT_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 const USDT_CONTRACT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
 //localhost fork from mainnet
-const bundlerManagerAddr = '0x9CC8B5379C40E24F374cd55973c138fff83ed214'
-const bundlerAddr = '0xD7a17dB0EC2a1D96A327bfC0E8FC8E66b4540324'
-const factoryAddr = '0xd3b893cd083f07Fe371c1a87393576e7B01C52C6'
-const walletAddr = '0x77f950fdae6198Cb89b4325B0F72960b9C6f0509'
+const bundlerManagerAddr = '0x0B1a87021ec75fBaE919b1e86b2B1335FFC8F4d3'
+const bundlerAddr = '0x5434e8FC67e9285d0DA256f81359610faF34Bc02'
+const factoryAddr = '0x18eb8AF587dcd7E4F575040F6D800a6B5Cef6CAf'
+const walletAddr = '0x94f4C1743d0a8d4F1b7792DD34Cf5A9F5ea97BCD'
 
 const NATIVE_ETH = new Ether(ChainId)
 const WETH_TOKEN = new Token(ChainId, WETH_CONTRACT_ADDRESS, 18, 'WETH', 'Wrapped Ether')

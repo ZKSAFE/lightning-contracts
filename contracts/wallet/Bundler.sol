@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3FlashCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "hardhat/console.sol";
 
 interface IOwner {
     function owner() external view returns (address);
@@ -116,37 +117,14 @@ contract Bundler is IUniswapV3FlashCallback {
     ///////////////////////////
 
     function executeSandwich(
-        bytes calldata sandwichCallBytes,
+        Call[] calldata sandwichCalls,
         address wallet,
-        bytes calldata funcData
+        bytes calldata data
     ) public onlyBundlerManager {
-        _callTo = wallet;
-
-        uint i;
-        while (i < sandwichCallBytes.length) {
-            
-            address to = address(uint160(bytes20(sandwichCallBytes[i:i + 20])));
-            uint value = uint(bytes32(sandwichCallBytes[i + 20:i + 52]));
-            uint len = uint(bytes32(sandwichCallBytes[i + 52:i + 84]));
-            bytes calldata data = sandwichCallBytes[i + 84:i + 84 + len];
-
-            _sandwichCalls.push(Call(to, value, data));
-
-            i += 84 + len;
+        for (uint i = 0; i < sandwichCalls.length; i++) {
+            _sandwichCalls.push(sandwichCalls[i]);
         }
-
-
-        (bool success, bytes memory result) = _callTo.call{
-            value: 0
-        }(funcData);
-
-        if (!success) {
-            assembly {
-                revert(add(result, 32), mload(result))
-            }
-        }
-
-        _callTo = address(0);
+        executeOperation(wallet, data);
     }
 
 
@@ -154,7 +132,7 @@ contract Bundler is IUniswapV3FlashCallback {
         require(msg.sender == _callTo, "sandwichCallback: Only _callTo");
 
         for (uint i = 0; i < _sandwichCalls.length; i++) {
-            Call memory call =  _sandwichCalls[i];
+            Call storage call =  _sandwichCalls[i];
             (bool success, bytes memory result) = call.to.call{value: call.value}(
                 call.data
             );

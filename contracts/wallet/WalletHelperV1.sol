@@ -54,7 +54,7 @@ contract WalletHelperV1 {
 
 
     /**
-     * decimals6Total: 1 = 0.01
+     * decimals6Total: 1 = 0.000001
      */
     function swapStableCoins(
         address[] calldata tokenAddrs,

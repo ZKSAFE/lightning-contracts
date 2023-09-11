@@ -128,7 +128,12 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery, IERC1271 {
     }
 
     /**
-     * only owner can change bundler, before that, guardians need to be empty
+     * Only owner can change bundler, before that, guardians need to be empty
+     * Q: Why not let the guardians change bundler ?
+     * A: Many users use to set one cold wallet, maybe only one guardian in guardians,
+     * if changing bundler(and owner) needs just only one guardian, that'll be the weakest of security.
+     * By another logical, bundler exsisted before guardians, so the sequence should be
+     * remove guardians first, then remove bundler.
      */
     function changeBundler(address newBundler) external onlyOwnerAndOriginal {
         require(
@@ -145,55 +150,8 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery, IERC1271 {
     }
 
     /**
-     * Multiple operations in one sign, with atomic(all successed or all failed)
-     * owner to sign, bundler to call
+     * Supported delegatecall, call within atomCall & atomSignCall
      */
-    function atomSignCallWithUnsignedData(
-        bytes calldata atomCallBytes,
-        uint32 deadline,
-        bytes calldata signature,
-        bytes calldata unsignedData
-    ) external onlyBundler {
-        require(deadline >= block.timestamp, "atomSignCallWithUnsignedData: Expired");
-        bytes32 msgHash = keccak256(
-            bytes.concat(
-                msg.data[:msg.data.length - signature.length - unsignedData.length - 72],
-                bytes32(block.chainid),
-                bytes20(address(this)),
-                bytes4(valid)
-            )
-        );
-        require(!usedMsgHashes[msgHash], "atomSignCallWithUnsignedData: Used msgHash");
-        require(
-            owner == msgHash.toEthSignedMessageHash().recover(signature),
-            "atomSignCallWithUnsignedData: Invalid Signature"
-        );
-        
-        uint i;
-        while (i < atomCallBytes.length) {
-            address to = address(uint160(bytes20(atomCallBytes[i:i + 20])));
-            uint value = uint(bytes32(atomCallBytes[i + 20:i + 52]));
-            uint len = uint(bytes32(atomCallBytes[i + 52:i + 84]));
-
-            bytes calldata data = atomCallBytes[i + 84:i + 84 + len];
-            console.logBytes(data);
-            // if (data == ) {
-            // data = unsignedData;
-            // }
-            (bool success, bytes memory result) = to.call{value: value}(data);
-            if (!success) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
-            }
-
-            i += 84 + len;
-        }
-
-        usedMsgHashes[msgHash] = true;
-    }
-
-
     function delegateCall(address to, bytes calldata data) public onlyOriginal {
         (bool success, bytes memory result) = to.delegatecall(data);
         if (!success) {

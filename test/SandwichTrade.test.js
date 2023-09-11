@@ -14,10 +14,11 @@ const WETH_CONTRACT_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const USDC_CONTRACT_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 
 //localhost fork from mainnet
-const bundlerManagerAddr = '0xf201fFeA8447AB3d43c98Da3349e0749813C9009'
-const bundlerAddr = '0xC9562c8Da74DF118f56F3eE0A20Ea8A8A60819e8'
-const factoryAddr = '0xA75E74a5109Ed8221070142D15cEBfFe9642F489'
-const walletAddr = '0xba61e995e1a5bEBD03104175C8ae0fC44977B316'
+const bundlerManagerAddr = '0x0B1a87021ec75fBaE919b1e86b2B1335FFC8F4d3'
+const bundlerAddr = '0x5434e8FC67e9285d0DA256f81359610faF34Bc02'
+const factoryAddr = '0x18eb8AF587dcd7E4F575040F6D800a6B5Cef6CAf'
+const walletAddr = '0x94f4C1743d0a8d4F1b7792DD34Cf5A9F5ea97BCD'
+
 
 const NATIVE_ETH = new Ether(ChainId)
 const WETH_TOKEN = new Token(ChainId, WETH_CONTRACT_ADDRESS, 18, 'WETH', 'Wrapped Ether')
@@ -61,57 +62,57 @@ describe('SandwichTrade.test', function () {
         weth = ERC20.attach(WETH_CONTRACT_ADDRESS)
     })
 
-    // it('deploy BundlerManager Bundler WalletFactory', async function () {
-    //     const BundlerManager = await ethers.getContractFactory('BundlerManager')
-    //     bundlerManager = await BundlerManager.deploy()
-    //     await bundlerManager.deployed()
-    //     console.log('const bundlerManagerAddr =', bundlerManager.address)
-
-    //     const Bundler = await ethers.getContractFactory('Bundler')
-    //     bundler = Bundler.attach(await bundlerManager.bundler())
-    //     console.log('const bundlerAddr =', bundler.address)
-
-    //     const WalletFactory = await ethers.getContractFactory('WalletFactory')
-    //     factory = await WalletFactory.deploy()
-    //     await factory.deployed()
-    //     console.log('const factoryAddr =', factory.address)
-    // })
-
-    // it('createWallet', async function () {
-    //     const SmartWallet = await ethers.getContractFactory('SmartWallet')
-    //     let tx = await (await factory.createWallet(accounts[1].address, bundler.address)).wait()
-    //     let walletAddr = tx.events[0].args[0]
-    //     wallet = SmartWallet.attach(walletAddr)
-    //     console.log('const walletAddr =', wallet.address)
-    // })
-
-
-    it('attach', async function () {
+    it('deploy BundlerManager Bundler WalletFactory', async function () {
         const BundlerManager = await ethers.getContractFactory('BundlerManager')
-        bundlerManager = BundlerManager.attach(bundlerManagerAddr)
+        bundlerManager = await BundlerManager.deploy()
+        await bundlerManager.deployed()
+        console.log('const bundlerManagerAddr =', bundlerManager.address)
 
         const Bundler = await ethers.getContractFactory('Bundler')
-        bundler = Bundler.attach(bundlerAddr)
+        bundler = Bundler.attach(await bundlerManager.bundler())
+        console.log('const bundlerAddr =', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = WalletFactory.attach(factoryAddr)
+        factory = await WalletFactory.deploy()
+        await factory.deployed()
+        console.log('const factoryAddr =', factory.address)
+    })
 
+    it('createWallet', async function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
+        let tx = await (await factory.createWallet(accounts[1].address, bundler.address)).wait()
+        let walletAddr = tx.events[0].args[0]
         wallet = SmartWallet.attach(walletAddr)
-
-        await print()
+        console.log('const walletAddr =', wallet.address)
     })
 
 
-    // it('deposit', async function () {
-    //     await accounts[0].sendTransaction({to: wallet.address, value: m(5, 18)})
-    //     console.log('transfer ETH to', wallet.address)
+    // it('attach', async function () {
+    //     const BundlerManager = await ethers.getContractFactory('BundlerManager')
+    //     bundlerManager = BundlerManager.attach(bundlerManagerAddr)
 
-    //     await accounts[0].sendTransaction({to: bundler.address, value: m(5, 18)})
-    //     console.log('transfer ETH to', bundler.address)
+    //     const Bundler = await ethers.getContractFactory('Bundler')
+    //     bundler = Bundler.attach(bundlerAddr)
+
+    //     const WalletFactory = await ethers.getContractFactory('WalletFactory')
+    //     factory = WalletFactory.attach(factoryAddr)
+
+    //     const SmartWallet = await ethers.getContractFactory('SmartWallet')
+    //     wallet = SmartWallet.attach(walletAddr)
 
     //     await print()
     // })
+
+
+    it('deposit', async function () {
+        await accounts[0].sendTransaction({to: wallet.address, value: m(5, 18)})
+        console.log('transfer ETH to', wallet.address)
+
+        await accounts[0].sendTransaction({to: bundler.address, value: m(5, 18)})
+        console.log('transfer ETH to', bundler.address)
+
+        await print()
+    })
    
    
     let tokenIn = NATIVE_ETH
@@ -283,11 +284,10 @@ describe('SandwichTrade.test', function () {
         value = methodParameters.value
         data = methodParameters.calldata
         callArr.push({ to, value, data })
-        let sandwichCallBytes = convertCallArrToCallBytes(callArr)
 
-        let estimateGas = await bundler.estimateGas.executeSandwich(sandwichCallBytes, wallet.address, calldata)
-        await bundler.executeSandwich(sandwichCallBytes, wallet.address, calldata)
-        console.log('executeSandwich done, gasCost:', estimateGas) //527553
+        let estimateGas = await bundler.estimateGas.executeSandwich(callArr, wallet.address, calldata)
+        await bundler.executeSandwich(callArr, wallet.address, calldata)
+        console.log('executeSandwich done, gasCost:', estimateGas) //560747
 
         await print()
     })

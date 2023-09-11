@@ -14,10 +14,10 @@ const WETH_CONTRACT_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const USDC_CONTRACT_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 
 //localhost fork from mainnet
-const bundlerManagerAddr = '0xf201fFeA8447AB3d43c98Da3349e0749813C9009'
-const bundlerAddr = '0xC9562c8Da74DF118f56F3eE0A20Ea8A8A60819e8'
-const factoryAddr = '0xA75E74a5109Ed8221070142D15cEBfFe9642F489'
-const walletAddr = '0xba61e995e1a5bEBD03104175C8ae0fC44977B316'
+const bundlerManagerAddr = '0x0B1a87021ec75fBaE919b1e86b2B1335FFC8F4d3'
+const bundlerAddr = '0x5434e8FC67e9285d0DA256f81359610faF34Bc02'
+const factoryAddr = '0x18eb8AF587dcd7E4F575040F6D800a6B5Cef6CAf'
+const walletAddr = '0x94f4C1743d0a8d4F1b7792DD34Cf5A9F5ea97BCD'
 
 const NATIVE_ETH = new Ether(ChainId)
 const WETH_TOKEN = new Token(ChainId, WETH_CONTRACT_ADDRESS, 18, 'WETH', 'Wrapped Ether')
@@ -104,35 +104,35 @@ describe('buyToken.test', function () {
     // })
 
     //run once
-    // it('approve', async function () {
-    //     const ERC20 = await ethers.getContractFactory('MockERC20')
-    //     const Bundler = await ethers.getContractFactory('Bundler')
-    //     const SmartWallet = await ethers.getContractFactory('SmartWallet')
+    it('approve', async function () {
+        const ERC20 = await ethers.getContractFactory('MockERC20')
+        const Bundler = await ethers.getContractFactory('Bundler')
+        const SmartWallet = await ethers.getContractFactory('SmartWallet')
 
-    //     let callArr = []
-    //     let to = '0x'
-    //     let value = 0
-    //     let data = '0x'
+        let callArr = []
+        let to = '0x'
+        let value = 0
+        let data = '0x'
 
-    //     to = bundler.address
-    //     value = 0
-    //     data = ERC20.interface.encodeFunctionData('approve(address,uint256)', [SWAP_ROUTER_ADDRESS, MAX_UINT256])
-    //     data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [usdc.address, 0, data])
-    //     callArr.push({to, value, data})
+        to = bundler.address
+        value = 0
+        data = ERC20.interface.encodeFunctionData('approve(address,uint256)', [SWAP_ROUTER_ADDRESS, MAX_UINT256])
+        data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [usdc.address, 0, data])
+        callArr.push({to, value, data})
 
-    //     let p = await atomSign(accounts[1], wallet.address, callArr)
-    //     let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallBytes, p.deadline, p.signature])
+        let p = await atomSign(accounts[1], wallet.address, callArr)
+        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallBytes, p.deadline, p.signature])
         
-    //     await bundler.executeOperation(wallet.address, calldata)
-    //     console.log('approve done')
-    // })
+        await bundler.executeOperation(wallet.address, calldata)
+        console.log('approve done')
+    })
 
 
     
     let tokenIn = USDC_TOKEN
     let tokenOut = WETH_TOKEN //NATIVE_ETH
     let amountIn
-    let amountOut = m(1, tokenOut.decimals)
+    let amountOut = m(0.9, tokenOut.decimals)
     let swapRoute
     it('quote', async function () {
         let poolInfo = await getPoolInfo()
