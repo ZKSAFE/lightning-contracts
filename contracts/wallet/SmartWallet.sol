@@ -161,5 +161,46 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery, IERC1271 {
         }
     }
 
-    
+    /**
+     * Expanded delegateCall
+     */
+    function delegateCallWithUnsignedData(
+        address to,
+        bytes calldata data,
+        uint32 deadline,
+        bytes calldata signature,
+        bytes calldata unsignedData
+    ) public onlyBundler {
+        require(deadline >= block.timestamp, "delegateCallWithUnsignedData: Expired");
+        bytes32 msgHash = keccak256(
+            bytes.concat(
+                bytes20(to),
+                bytes(data),
+                bytes4(deadline),
+                bytes32(block.chainid),
+                bytes20(address(this)),
+                bytes4(valid)
+            )
+        );
+        require(!usedMsgHashes[msgHash], "delegateCallWithUnsignedData: Used msgHash");
+        require(
+            owner == msgHash.toEthSignedMessageHash().recover(signature),
+            "delegateCallWithUnsignedData: Invalid Signature"
+        );
+
+        (bool success, bytes memory result) = to.delegatecall(
+            bytes.concat(
+                data[:data.length - 32], 
+                bytes32(unsignedData.length), 
+                unsignedData
+            )
+        );
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
+
+        usedMsgHashes[msgHash] = true;
+    }
 }

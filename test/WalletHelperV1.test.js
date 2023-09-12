@@ -61,11 +61,6 @@ describe('SmartWallet-Bundler.test', function () {
         bundler = Bundler.attach(await bundlerManager.bundler())
         console.log('bundler deployed:', bundler.address)
 
-        const SmartWallet = await ethers.getContractFactory('SmartWallet')
-        wallet = await SmartWallet.deploy(accounts[1].address, bundler.address)
-        await wallet.deployed()
-        console.log('wallet deployed:', wallet.address)
-
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
         factory = await WalletFactory.deploy()
         await factory.deployed()

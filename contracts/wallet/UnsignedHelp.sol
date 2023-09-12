@@ -7,67 +7,52 @@ import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 import "hardhat/console.sol";
 
 /**
- * With unsignedData has security risk, use Bundler.executeSandwich() instead
+ * Similar to Bundler.executeSandwich(), but less gas cost
+ * executeSandwich gas cost: 560747
+ * UnsignedHelper  gas cost: 297300
  */
-contract UnsignedHelp {
+contract UnsignedHelper {
 
-    uint32 public valid = 1; //to make AtomSign invalid
-
-    address public bundler;
-
-    mapping(bytes32 => bool) public usedMsgHashes;
+    //keccak256(abi.encodeCall(Bundler.bundlerCallback2, bytes.concat()));
+    bytes32 constant bundlerCallback2Hash = 0x3040d74aefb16bffade2625c6a7587044f8f4537c95cf5b0dd3dea04013898fb; 
 
     constructor() {
-        
     }
 
     /**
-     * Multiple operations in one sign, with atomic(all successed or all failed)
-     * owner to sign, bundler to call
+     * Call in SmartWallet.delegateCallWithUnsignedData()
      */
-    // function atomSignCallWithUnsignedData(
-    //     bytes calldata atomCallBytes,
-    //     uint32 deadline,
-    //     bytes calldata signature,
-    //     bytes calldata unsignedData
-    // ) external {
-    //     require(deadline >= block.timestamp, "atomSignCallWithUnsignedData: Expired");
-    //     bytes32 msgHash = keccak256(
-    //         bytes.concat(
-    //             msg.data[:msg.data.length - signature.length - unsignedData.length - 72],
-    //             bytes32(block.chainid),
-    //             bytes20(address(this)),
-    //             bytes4(valid)
-    //         )
-    //     );
-    //     require(!usedMsgHashes[msgHash], "atomSignCallWithUnsignedData: Used msgHash");
-    //     require(
-    //         owner == msgHash.toEthSignedMessageHash().recover(signature),
-    //         "atomSignCallWithUnsignedData: Invalid Signature"
-    //     );
-        
-    //     uint i;
-    //     while (i < atomCallBytes.length) {
-    //         address to = address(uint160(bytes20(atomCallBytes[i:i + 20])));
-    //         uint value = uint(bytes32(atomCallBytes[i + 20:i + 52]));
-    //         uint len = uint(bytes32(atomCallBytes[i + 52:i + 84]));
+    function atomSignCallWithUnsignedData(
+        bytes calldata atomCallBytes,
+        bytes calldata unsignedData
+    ) external {
 
-    //         bytes calldata data = atomCallBytes[i + 84:i + 84 + len];
-    //         console.logBytes(data);
-    //         // if (data == ) {
-    //         // data = unsignedData;
-    //         // }
-    //         (bool success, bytes memory result) = to.call{value: value}(data);
-    //         if (!success) {
-    //             assembly {
-    //                 revert(add(result, 32), mload(result))
-    //             }
-    //         }
+        uint i;
+        while (i < atomCallBytes.length) {
+            address to = address(uint160(bytes20(atomCallBytes[i:i + 20])));
+            uint value = uint(bytes32(atomCallBytes[i + 20:i + 52]));
+            uint len = uint(bytes32(atomCallBytes[i + 52:i + 84]));
 
-    //         i += 84 + len;
-    //     }
+            bool success;
+            bytes memory result;
 
-    //     usedMsgHashes[msgHash] = true;
-    // }
+            bytes calldata data = atomCallBytes[i + 84:i + 84 + len];
+            if (keccak256(data) == bundlerCallback2Hash) {
+                (success, result) = to.call{value: value}(
+                    abi.encodeCall(Bundler.bundlerCallback2, unsignedData)
+                );
+            } else {
+                (success, result) = to.call{value: value}(data);
+            }
+
+            if (!success) {
+                assembly {
+                    revert(add(result, 32), mload(result))
+                }
+            }
+
+            i += 84 + len;
+        }
+    }
 
 }

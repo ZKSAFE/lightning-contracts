@@ -112,6 +112,15 @@ contract Bundler is IUniswapV3FlashCallback {
     }
 
 
+    function bundlerCallback2(
+        bytes calldata atomCallBytes
+    ) external {
+        require(msg.sender == _callTo, "bundlerCallback: Only _callTo");
+
+        _doAtomCall(atomCallBytes);
+    }
+
+
     ///////////////////////////
     ////  executeSandwich  ////
     ///////////////////////////
@@ -155,7 +164,7 @@ contract Bundler is IUniswapV3FlashCallback {
         address pool,
         uint borrowAmount0,
         uint borrowAmount1,
-        bytes calldata atomCallbytes
+        bytes calldata atomCallBytes
     ) external onlyBundlerManager {
         _callTo = pool;
         // recipient of borrowed amounts
@@ -163,24 +172,33 @@ contract Bundler is IUniswapV3FlashCallback {
         // amount of token1 requested to borrow
         // need amount 0 and amount1 in callback to pay back pool
         // recipient of flash should be THIS contract
-        IUniswapV3Pool(pool).flash(original, borrowAmount0, borrowAmount1, atomCallbytes);
+        IUniswapV3Pool(pool).flash(original, borrowAmount0, borrowAmount1, atomCallBytes);
+
+        _callTo = address(0);
     }
 
 
     function uniswapV3FlashCallback(
         uint,
         uint,
-        bytes calldata atomCallbytes
+        bytes calldata atomCallBytes
     ) external override {
         require(msg.sender == _callTo, "uniswapV3FlashCallback: Only _callTo");
 
-        uint i;
-        while(i < atomCallbytes.length) {
-            address to = address(uint160(bytes20(atomCallbytes[i:i+20])));
-            uint value = uint(bytes32(atomCallbytes[i+20:i+52]));
-            uint len = uint(bytes32(atomCallbytes[i+52:i+84]));
+        _doAtomCall(atomCallBytes);
+    }
 
-            (bool success, bytes memory result) = to.call{value: value}(atomCallbytes[i+84:i+84+len]);
+
+    function _doAtomCall(bytes calldata atomCallBytes) private {
+        uint i;
+        while (i < atomCallBytes.length) {
+            address to = address(uint160(bytes20(atomCallBytes[i:i + 20])));
+            uint value = uint(bytes32(atomCallBytes[i + 20:i + 52]));
+            uint len = uint(bytes32(atomCallBytes[i + 52:i + 84]));
+
+            (bool success, bytes memory result) = to.call{value: value}(
+                atomCallBytes[i + 84:i + 84 + len]
+            );
             if (!success) {
                 assembly {
                     revert(add(result, 32), mload(result))
@@ -189,7 +207,5 @@ contract Bundler is IUniswapV3FlashCallback {
 
             i += 84 + len;
         }
-
-        _callTo = address(0);
     }
 }

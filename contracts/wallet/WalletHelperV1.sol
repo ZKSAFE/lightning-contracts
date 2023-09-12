@@ -17,6 +17,7 @@ contract WalletHelperV1 {
     }
 
     /**
+     * call in SmartWallet.delegateCall()
      * decimals6Total: 1 = 0.000001
      */
     function transferStableCoins(
@@ -54,6 +55,7 @@ contract WalletHelperV1 {
 
 
     /**
+     * call in SmartWallet.delegateCall()
      * decimals6Total: 1 = 0.000001
      */
     function swapStableCoins(
@@ -105,9 +107,11 @@ contract WalletHelperV1 {
     }
 
 
-    function swapExactInputSingle(address inTokenAddr, uint amountIn, address outTokenAddr) internal returns (uint256 amountOut) {
-        // msg.sender must approve this contract
-
+    function swapExactInputSingle(
+        address inTokenAddr, 
+        uint amountIn, 
+        address outTokenAddr
+    ) internal returns (uint256 amountOut) {
         // Approve the router to spend DAI.
         TransferHelper.safeApprove(inTokenAddr, address(swapRouter), amountIn);
 
