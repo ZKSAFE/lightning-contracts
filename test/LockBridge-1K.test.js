@@ -66,16 +66,16 @@ describe('LockBridge-1K.test', function () {
     let rootIndex
     let crossPackage
     it('cross', async function () {
-        let estimateGas = await sendPort.estimateGas.pack()
-        console.log('pack estimateGas', estimateGas) //5775334 433649
-        await sendPort.pack()
+        // let estimateGas = await sendPort.estimateGas.pack()
+        // console.log('pack estimateGas', estimateGas) //5775334 433649
+        // await sendPort.pack()
 
         let pendingPackage = await sendPort.getPendingPackage()
         console.log('pendingPackage:', pendingPackage)
 
-        rootIndex = 0
+        rootIndex = n(pendingPackage.index) - 1
         crossPackage = await sendPort.getPackedPackage(rootIndex)
-        console.log('crossPackage:', rootIndex, crossPackage)
+        console.log('crossPackage:', crossPackage)
 
         await toBridge.receivePackages([{
             fromChainId: chainId,

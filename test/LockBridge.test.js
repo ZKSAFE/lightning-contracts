@@ -67,7 +67,7 @@ describe('LockBridge.test', function () {
     it('cross', async function () {
         await sendPort.pack()
 
-        let pendingPackage = await sendPort.pendingPackage()
+        let pendingPackage = await sendPort.getPendingPackage()
         console.log('pendingPackage:', pendingPackage)
 
         rootIndex = n(pendingPackage.index) - 1
