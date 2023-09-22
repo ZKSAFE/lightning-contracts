@@ -52,17 +52,13 @@ SendPort合约是每条链上唯一的，用于收集该链发生的事情（即
 
 ![](../assets/eip-draft_Public_Cross_Port/3.png)
 
-如果有N条链需要互相跨链，需要的跨链桥数量是：
-
-<center><bold>num = N * (N - 1)</bold></center>
+如果有N条链需要互相跨链，需要的跨链桥数量是： num = N * (N - 1)
 
 用pull的方式可以把5条链的跨链消息合并为1个tx，从而大幅减少跨链桥，如下图：
 
 ![](../assets/eip-draft_Public_Cross_Port/4.png)
 
-如果每条链都把其他5条链的消息pull到自己链上，需要6条跨链桥即可，如果有N条链需要互相跨链，需要的跨链桥数量是：
-
-<center><bold>num = N</bold></center>
+如果每条链都把其他5条链的消息pull到自己链上，需要6条跨链桥即可，如果有N条链需要互相跨链，需要的跨链桥数量是：num = N
 
 从而大幅减少跨链桥的数量。
 
