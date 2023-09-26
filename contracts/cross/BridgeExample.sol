@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ISendPort.sol";
 import "./ReceivePort.sol";
 
-contract LockBridge is ReceivePort, Ownable {
+contract BridgeExample is ReceivePort, Ownable {
     using SafeERC20 for IERC20;
 
     ISendPort public sendPort;

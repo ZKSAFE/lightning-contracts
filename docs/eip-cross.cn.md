@@ -1,20 +1,20 @@
 ---
-eip: <to be assigned>
-title: <The EIP title is a few words, not a complete sentence>
-description: <Description is one full (short) sentence>
-author: <a comma separated list of the author's or authors' name + GitHub username (in parenthesis), or name and email (in angle brackets).  Example, FirstName LastName (@GitHubUsername), FirstName LastName <foo@bar.com>, FirstName (@GitHubUsername) and GitHubUsername (@GitHubUsername)>
-discussions-to: <URL>
+eip: xxxx
+title: Public Cross Port
+description: Help to Connect all EVM chains
+author: George (@JXRow)
+discussions-to: https://ethereum-magicians.org/t/connect-all-l2s
 status: Draft
-type: <Standards Track, Meta, or Informational>
-category (*only required for Standards Track): <Core, Networking, Interface, or ERC>
-created: <date created on, in ISO 8601 (yyyy-mm-dd) format>
-requires (*optional): <EIP number(s)>
+type: Standards Track
+category: ERC
+created: 2023-09-18
 ---
 
 
 ## Abstract
 
 Public Cross Port(简称PCP)的目标是把各个EVM公链安全高效的互联起来，大幅减少跨链桥的数量和gas消耗，大幅提升安全性，推动所有EVM公链联合一起，建立一个强大的、去中心化的EVM跨链网络。为实现这一目标，需要各个跨链桥项目方使用统一的SendPort合约和IReceivePort接口。当越来越多的跨链桥项目方建立在PCP之上，整体的安全性也越高，建立去中心化的EVM跨链网络成为可能，使用这个跨链网络的Dapp将获得安全性极高的、免费的跨链服务。
+
 
 ## Motivation
 
@@ -24,11 +24,213 @@ Public Cross Port(简称PCP)的目标是把各个EVM公链安全高效的互联�
 
 为了吸引跨链桥项目方参与进来，除了让项目方节省跨链桥数量和gas消耗，还通过Hash MerkleTree(简称MerkleTree)数据结构，使得SendPort里跨链消息的增加，并不会增加跨链桥的开销，跨链桥搬运的只需一个体积很小的root即可，进一步节省gas。
 
+
+### Use case
+
+本EIP将跨链生态分为三层，并定义了基础层的SendPort合约和IReceivePort接口，其他则由生态项目方自行实现。
+
+![](../assets/eip-draft_Public_Cross_Port/0.png)
+
+本EIP官方在每条链上部署唯一的SendPort合约，用于收集该链上的跨链消息并打包，SendPort是公共的、无需使用许可、无管理员并自动运行的。消息跨链桥从SendPort获取跨链信息，搬运到目标链上即完成消息跨链。
+
+消息跨链之上可以进行Token跨链、NFT跨链、跨链交易等各类跨链应用。
+
+消息跨链桥可以和Token跨链合二为一，后面有代码示例。也可以分开，以NFT cross应用为例，该应用可以没有自己的跨链桥，它可以复用Token的消息跨链桥，还可以复用多个消息跨链桥，复用多个桥来验证消息可以大幅提升安全性，且不需要为跨链和验证服务付费。
+
+
 ## Specification
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119 and RFC 8174.
 
-The technical specification should describe the syntax and semantics of any new feature. The specification should be detailed enough to allow competing, interoperable implementations for any of the current Ethereum platforms (go-ethereum, parity, cpp-ethereum, ethereumj, ethereumjs, and [others](https://ethereum.org/en/developers/docs/nodes-and-clients/)).
+### `ISendPort` Interface and `SendPort` Implementation
+
+```solidity
+pragma solidity ^0.8.0;
+
+interface ISendPort {
+    event MsgHashAdded(uint indexed packageIndex, address sender, bytes32 msgHash, uint toChainId, bytes32 leaf);
+
+    event Packed(uint indexed packageIndex, uint indexed packTime, bytes32 root);
+
+    struct Package {
+        uint packageIndex;
+        bytes32 root;
+        bytes32[] leaves;
+        uint createTime;
+        uint packTime;
+    }
+
+    function addMsgHash(bytes32 msgHash, uint toChainId) external;
+
+    function pack() external;
+
+    function getPackage(uint packageIndex) external view returns (Package memory);
+
+    function getPendingPackage() external view returns (Package memory);
+}
+```
+
+Let:
+- `Package` 收集一段时间内的跨链消息，打包为一个`Package`
+  - `packageIndex` `Package`的序号，从0开始
+  - `root` 把`leaves`按MerkleTree生成的root，即打包
+  - `leaves` 每一个leaf是一个跨链消息，leaf是`msgHash`, `sender`, `toChainId`计算出的hash
+    - `msgHash` 消息hash，从外部合约传入
+    - `sender` 即外部合约地址，无需传入
+    - `toChainId` 要发送到哪条链，从外部合约传入
+  - `createTime` 该`Package`开始收集的时间戳，也是上一个`Package`打包的时间戳
+  - `packTime` 该`Package`打包的时间戳，打包即生成`root`，并不再接收leaf
+- `addMsgHash` 外部合约把跨链消息发给SendPort
+- `pack` 手动打包，通常是最后一个提交消息的自动触发打包，如果等了很久也没有等到最后一个提交者，那么可以手动打包
+- `getPackage` 查询SendPort的每个Package，包括已打包的和pendingPackage
+- `getPendingPackage` 查询SendPort的pendingPackage
+
+```solidity
+pragma solidity ^0.8.0;
+
+import "./ISendPort.sol";
+
+contract SendPort is ISendPort {
+    uint public constant PACK_INTERVAL = 6000;
+    uint public constant MAX_PACKAGE_MESSAGES = 100;
+
+    uint public pendingIndex = 0;
+
+    mapping(uint => Package) public packages;
+
+    constructor() {
+        packages[0] = Package(0, bytes32(0), new bytes32[](0), block.timestamp, 0);
+    }
+
+    function addMsgHash(bytes32 msgHash, uint toChainId) public {
+        bytes32 leaf = keccak256(
+            abi.encodePacked(msgHash, msg.sender, toChainId)
+        );
+        Package storage pendingPackage = packages[pendingIndex];
+        pendingPackage.leaves.push(leaf);
+
+        emit MsgHashAdded(pendingPackage.packageIndex, msg.sender, msgHash, toChainId, leaf);
+
+        if (pendingPackage.leaves.length >= MAX_PACKAGE_MESSAGES) {
+            console.log("MAX_PACKAGE_MESSAGES", pendingPackage.leaves.length);
+            _pack();
+            return;
+        }
+
+        // console.log("block.timestamp", block.timestamp);
+        if (pendingPackage.createTime + PACK_INTERVAL <= block.timestamp) {
+            console.log("PACK_INTERVAL", pendingPackage.createTime, block.timestamp);
+            _pack();
+        }
+    }
+
+    function pack() public {
+        require(packages[pendingIndex].createTime + PACK_INTERVAL <= block.timestamp, "SendPort::pack: pack interval too short");
+
+       _pack();
+    }
+
+    function getPackage(uint packageIndex) public view returns (Package memory) {
+        return packages[packageIndex];
+    }
+
+    function getPendingPackage() public view returns (Package memory) {
+        return packages[pendingIndex];
+    }
+
+    function _pack() internal {
+        Package storage pendingPackage = packages[pendingIndex];
+        bytes32[] memory _leaves = pendingPackage.leaves;
+        while (_leaves.length > 1) {
+            _leaves = _computeLeaves(_leaves);
+        }
+        pendingPackage.root = _leaves[0];
+        pendingPackage.packTime = block.timestamp;
+
+        emit Packed(pendingPackage.packageIndex, pendingPackage.packTime, pendingPackage.root);
+
+        pendingIndex = pendingPackage.packageIndex + 1;
+        packages[pendingIndex] = Package(pendingIndex, bytes32(0), new bytes32[](0), pendingPackage.packTime, 0);
+    }
+
+    function _computeLeaves(bytes32[] memory _leaves) pure internal returns (bytes32[] memory _nextLeaves) {
+        if (_leaves.length % 2 == 0) {
+            _nextLeaves = new bytes32[](_leaves.length / 2);
+            bytes32 computedHash;
+            for (uint i = 0; i + 1 < _leaves.length; i += 2) {
+                computedHash = _hashPair(_leaves[i], _leaves[i + 1]);
+                _nextLeaves[i / 2] = computedHash;
+            }
+
+        } else {
+            bytes32 lastLeaf = _leaves[_leaves.length - 1];
+            _nextLeaves = new bytes32[]((_leaves.length / 2 + 1));
+            bytes32 computedHash;
+            for (uint i = 0; i + 1 < _leaves.length; i += 2) {
+                computedHash = _hashPair(_leaves[i], _leaves[i + 1]);
+                _nextLeaves[i / 2] = computedHash;
+            }
+            _nextLeaves[_nextLeaves.length - 1] = lastLeaf;
+        }
+    }
+
+    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+        return a < b ? _efficientHash(a, b) : _efficientHash(b, a);
+    }
+
+    function _efficientHash(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, a)
+            mstore(0x20, b)
+            value := keccak256(0x00, 0x40)
+        }
+    }
+}
+```
+
+External featrues:
+
+- `PACK_INTERVAL` 两次打包的最小时间间隔，超过这个时间便可以打包
+- `MAX_PACKAGE_MESSAGES` 收集到`MAX_PACKAGE_MESSAGES`个消息后立即打包，优先级高于`PACK_INTERVAL`
+
+### `IReceivePort` Interface
+
+```solidity
+pragma solidity ^0.8.0;
+
+interface IReceivePort {
+    event PackageReceived(uint indexed fromChainId, uint indexed packageIndex, bytes32 root);
+
+    struct Package {
+        uint fromChainId;
+        uint packageIndex;
+        bytes32 root;
+    }
+
+    function receivePackages(Package[] calldata packages) external;
+
+    function getRoot(uint fromChainId, uint packageIndex) external view returns (bytes32);
+
+    function verify(
+        uint fromChainId,
+        uint packageIndex,
+        bytes32[] memory proof,
+        bytes32 msgHash,
+        address sender
+    ) external view returns (bool);
+}
+```
+
+Let:
+- `Package` 收集一段时间内的跨链消息，打包为一个`Package`
+  - `fromChainId` 该`Package`从哪条链过来
+  - `packageIndex` `Package`的序号，从0开始
+  - `root` 把`leaves`按MerkleTree生成的root，即打包
+- `receivePackages` 把多个源链上的`root`一起搬运到目标链上
+- `getRoot` 查询某个链上的某个root
+- `verify` 验证源链上的消息是否为sender发送
+
 
 ## Rationale
 
@@ -80,15 +282,165 @@ This EIP does not change the consensus layer, so there are no backwards compatib
 
 ## Reference Implementation
 
+以下是跨链桥的示例合约
+ReceivePort.sol (for example)
 ```solidity
 pragma solidity ^0.8.0;
+
+import "./IReceivePort.sol";
+
+abstract contract ReceivePort is IReceivePort {
+
+    //fromChainId => packageIndex => root
+    mapping(uint => mapping(uint => bytes32)) public roots;
+
+    constructor() {}
+
+    function receivePackages(Package[] calldata packages) public {
+        for (uint i = 0; i < packages.length; i++) {
+            Package calldata p = packages[i];
+            require(roots[p.fromChainId][p.packageIndex] == bytes32(0), "ReceivePort::receivePackages: package already exist");
+            roots[p.fromChainId][p.packageIndex] = p.root;
+
+            emit PackageReceived(p.fromChainId, p.packageIndex, p.root);
+        }
+    }
+
+    function getRoot(uint fromChainId, uint packageIndex) public view returns (bytes32) {
+        return roots[fromChainId][packageIndex];
+    }
+
+    function verify(
+        uint fromChainId,
+        uint packageIndex,
+        bytes32[] memory proof,
+        bytes32 msgHash,
+        address sender
+    ) public view returns (bool) {
+        bytes32 leaf = keccak256(
+            abi.encodePacked(msgHash, sender, block.chainid)
+        );
+        return _processProof(proof, leaf) == roots[fromChainId][packageIndex];
+    }
+
+    function _processProof(bytes32[] memory proof, bytes32 leaf) internal pure returns (bytes32) {
+        bytes32 computedHash = leaf;
+        for (uint256 i = 0; i < proof.length; i++) {
+            computedHash = _hashPair(computedHash, proof[i]);
+        }
+        return computedHash;
+    }
+
+    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+        return a < b ? _efficientHash(a, b) : _efficientHash(b, a);
+    }
+
+    function _efficientHash(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, a)
+            mstore(0x20, b)
+            value := keccak256(0x00, 0x40)
+        }
+    }
+}
+```
+
+BridgeExample.sol (for example)
+```solidity
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ISendPort.sol";
+import "./ReceivePort.sol";
+
+contract BridgeExample is ReceivePort, Ownable {
+    using SafeERC20 for IERC20;
+
+    ISendPort public sendPort;
+
+    mapping(bytes32 => bool) public usedMsgHashes;
+
+    mapping(uint => address) public trustBridges;
+
+    mapping(address => address) public crossPairs;
+
+    constructor(address sendPortAddr) {
+        sendPort = ISendPort(sendPortAddr);
+    }
+
+    function setTrustBridge(uint chainId, address bridge) public onlyOwner {
+        trustBridges[chainId] = bridge;
+    }
+
+    function setCrossPair(address fromTokenAddr, address toTokenAddr) public onlyOwner {
+        crossPairs[fromTokenAddr] = toTokenAddr;
+    }
+
+    function getLeaves(uint packageIndex, uint start, uint num) view public returns(bytes32[] memory) {
+        ISendPort.Package memory p = sendPort.getPackage(packageIndex);
+        bytes32[] memory result = new bytes32[](num);
+        for (uint i = 0; i < p.leaves.length && i < num; i++) {
+            result[i] = p.leaves[i + start];
+        }
+        return result;
+    }
+
+    function transferTo(
+        uint toChainId,
+        address fromTokenAddr,
+        uint amount,
+        address receiver
+    ) public {
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(toChainId, fromTokenAddr, amount, receiver)
+        );
+        sendPort.addMsgHash(msgHash, toChainId);
+
+        IERC20(fromTokenAddr).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function transferFrom(
+        uint fromChainId,
+        uint packageIndex,
+        bytes32[] memory proof,
+        address fromTokenAddr,
+        uint amount,
+        address receiver
+    ) public {
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(block.chainid, fromTokenAddr, amount, receiver)
+        );
+
+        require(!usedMsgHashes[msgHash], "transferFrom: Used msgHash");
+
+        require(
+            verify(
+                fromChainId,
+                packageIndex,
+                proof,
+                msgHash,
+                trustBridges[fromChainId]
+            ),
+            "transferFrom: verify failed"
+        );
+
+        usedMsgHashes[msgHash] = true;
+
+        address toTokenAddr = crossPairs[fromTokenAddr];
+        require(toTokenAddr != address(0), "transferFrom: fromTokenAddr is not crossPair");
+        IERC20(toTokenAddr).safeTransfer(receiver, amount);
+    }
+}
 ```
 
 ## Security Considerations
 
 关于跨链桥之间的竞争和双花：
 
-SendPort只做一件事情，把要跨链的消息进行统一打包。消息的传输和验证交给各个跨链桥项目方自行实现，目的是要确保不同的跨链桥在源链上获取的跨链消息是一致的。如果跨链桥自己的方案实现有bug的话，对他们自己是有这个风险，但风险不会扩散到其他跨链桥。RECOMMENDED：
+SendPort只做一件事情，把要跨链的消息进行统一打包。消息的传输和验证交给各个跨链桥项目方自行实现，目的是要确保不同的跨链桥在源链上获取的跨链消息是一致的，所以跨链桥之间不需要竞争root的搬运权或验证权，各自都是独立运行。如果跨链桥自己的方案实现有bug的话，对他们自己有风险，但风险不会扩散到其他跨链桥。RECOMMENDED：
 1. 跨链桥自己搬运root，不要让其他搬运方把root搬运到自己的IReceivePort。
 2. 验证的时候把验证通过的leaf存起来，避免下次再验证造成双花。
 3. 不要信任MerkleTree里的所有sender。

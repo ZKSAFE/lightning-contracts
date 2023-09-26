@@ -29,12 +29,12 @@ describe('LockBridge-1K.test', function () {
         await sendPort.deployed()
         console.log('sendPort deployed:', sendPort.address)
 
-        const LockBridge = await ethers.getContractFactory('LockBridge')
-        fromBridge = await LockBridge.deploy(sendPort.address)
+        const Bridge = await ethers.getContractFactory('BridgeExample')
+        fromBridge = await Bridge.deploy(sendPort.address)
         await fromBridge.deployed()
         console.log('fromBridge deployed:', fromBridge.address)
 
-        toBridge = await LockBridge.deploy(sendPort.address)
+        toBridge = await Bridge.deploy(sendPort.address)
         await toBridge.deployed()
         console.log('toBridge deployed:', toBridge.address)
 
