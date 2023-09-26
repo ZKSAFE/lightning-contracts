@@ -63,7 +63,7 @@ describe('LockBridge-1K.test', function () {
         await print()
     })
 
-    let rootIndex
+    let packageIndex
     let crossPackage
     it('cross', async function () {
         // let estimateGas = await sendPort.estimateGas.pack()
@@ -73,13 +73,13 @@ describe('LockBridge-1K.test', function () {
         let pendingPackage = await sendPort.getPendingPackage()
         console.log('pendingPackage:', pendingPackage)
 
-        rootIndex = n(pendingPackage.index) - 1
-        crossPackage = await sendPort.getPackedPackage(rootIndex)
+        packageIndex = n(pendingPackage.packageIndex) - 1
+        crossPackage = await sendPort.getPackage(packageIndex)
         console.log('crossPackage:', crossPackage)
 
         await toBridge.receivePackages([{
             fromChainId: chainId,
-            rootIndex: rootIndex,
+            packageIndex: packageIndex,
             root: crossPackage.root
         }])
         console.log('toBridge.receivePackages() done')
@@ -90,7 +90,7 @@ describe('LockBridge-1K.test', function () {
         let leaves = []
         for (let i = 0; i < 10; i++) {
             let start = 10 * i;
-            let ls = await fromBridge.getLeaves(rootIndex, start, 10)
+            let ls = await fromBridge.getLeaves(packageIndex, start, 10)
             console.log('ls:', ls)
             leaves = leaves.concat(ls)
         }
@@ -98,12 +98,12 @@ describe('LockBridge-1K.test', function () {
 
         let merkleTree = new MerkleTree(leaves, keccak256, { hashLeaves: false, sortPairs: true })
         console.log('merkleTree.getHexRoot:', merkleTree.getHexRoot())
-        console.log('toBridge.getRoot():', await toBridge.getRoot(chainId, rootIndex))
+        console.log('toBridge.getRoot():', await toBridge.getRoot(chainId, packageIndex))
 
         let leaf = leaves[0]
         let proof = merkleTree.getHexProof(leaf)
         let amount = s(m(1, 16))
-        await toBridge.connect(accounts[1]).transferFrom(chainId, rootIndex, proof, usdt.address, amount, accounts[1].address)
+        await toBridge.connect(accounts[1]).transferFrom(chainId, packageIndex, proof, usdt.address, amount, accounts[1].address)
 
         await print()
     })

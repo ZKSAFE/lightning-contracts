@@ -60,7 +60,7 @@ SendPort合约是每条链上唯一的，用于收集该链发生的事情（即
 
 如果每条链都把其他5条链的消息pull到自己链上，需要6条跨链桥即可，如果有N条链需要互相跨链，需要的跨链桥数量是：num = N
 
-从而大幅减少跨链桥的数量。
+所以pull的方式能够大幅减少跨链桥的数量。
 
 MerkleTree的数据结构可以最大程度的压缩跨链消息的大小，无论有多少跨链消息，都可以压缩到一个root，即byte32的大小，消息搬运方只需要搬运root即可，gas消耗很低。
 
@@ -86,7 +86,24 @@ pragma solidity ^0.8.0;
 
 ## Security Considerations
 
-All EIPs must contain a section that discusses the security implications/considerations relevant to the proposed change. Include information that might be important for security discussions, surfaces risks and can be used throughout the life cycle of the proposal. E.g. include security-relevant design decisions, concerns, important discussions, implementation-specific guidance and pitfalls, an outline of threats and risks and how they are being addressed. EIP submissions missing the "Security Considerations" section will be rejected. An EIP cannot proceed to status "Final" without a Security Considerations discussion deemed sufficient by the reviewers.
+关于跨链桥之间的竞争和双花：
+
+SendPort只做一件事情，把要跨链的消息进行统一打包。消息的传输和验证交给各个跨链桥项目方自行实现，目的是要确保不同的跨链桥在源链上获取的跨链消息是一致的。如果跨链桥自己的方案实现有bug的话，对他们自己是有这个风险，但风险不会扩散到其他跨链桥。RECOMMENDED：
+1. 跨链桥自己搬运root，不要让其他搬运方把root搬运到自己的IReceivePort。
+2. 验证的时候把验证通过的leaf存起来，避免下次再验证造成双花。
+3. 不要信任MerkleTree里的所有sender。
+
+关于伪造跨链消息：
+
+由于SendPort是公共合约，没有使用限制，任何人都可以往SendPort发送任意的跨链消息，所以SendPort会把msg.sender一起打包，如果黑客想要伪造跨链消息，SendPort也会把黑客的地址加上伪造的消息一起打包，在验证的时候黑客地址就会被验证出来。这也是建议的第3点：不要信任MerkleTree里的所有sender。
+
+关于消息的排序：
+
+虽然SendPort把收到的跨链消息按时间排序，但是验证的时候不保证顺序。假如用户先跨链了10ETH，然后又跨链了20USDT，但是在目标链，他可能会先取出20USDT，再取出10ETH，或者等很久再取。具体要看IReceivePort的实现方式。
+
+关于数据完整性：
+
+SendPort有全部的roots以及连续的index序号，不会删除和更改，各跨链桥的IReceivePort也应该如此。
 
 ## Copyright
 

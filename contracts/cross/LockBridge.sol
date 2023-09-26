@@ -30,8 +30,8 @@ contract LockBridge is ReceivePort, Ownable {
         crossPairs[fromTokenAddr] = toTokenAddr;
     }
 
-    function getLeaves(uint index, uint start, uint num) view public returns(bytes32[] memory) {
-        ISendPort.Package memory p = sendPort.getPackedPackage(index);
+    function getLeaves(uint packageIndex, uint start, uint num) view public returns(bytes32[] memory) {
+        ISendPort.Package memory p = sendPort.getPackage(packageIndex);
         bytes32[] memory result = new bytes32[](num);
         for (uint i = 0; i < p.leaves.length && i < num; i++) {
             result[i] = p.leaves[i + start];
@@ -55,7 +55,7 @@ contract LockBridge is ReceivePort, Ownable {
 
     function transferFrom(
         uint fromChainId,
-        uint rootIndex,
+        uint packageIndex,
         bytes32[] memory proof,
         address fromTokenAddr,
         uint amount,
@@ -70,7 +70,7 @@ contract LockBridge is ReceivePort, Ownable {
         require(
             verify(
                 fromChainId,
-                rootIndex,
+                packageIndex,
                 proof,
                 msgHash,
                 trustBridges[fromChainId]

@@ -13,18 +13,17 @@ contract SendPort is ISendPort {
     mapping(uint => Package) public packages;
 
     constructor() {
-        packages[0] = Package(0, bytes32(0), new bytes32[](0), new uint[](0), block.timestamp, 0);
+        packages[0] = Package(0, bytes32(0), new bytes32[](0), block.timestamp, 0);
     }
 
     function addMsgHash(bytes32 msgHash, uint toChainId) public {
         bytes32 leaf = keccak256(
-            abi.encodePacked(msgHash, msg.sender)
+            abi.encodePacked(msgHash, msg.sender, toChainId)
         );
         Package storage pendingPackage = packages[pendingIndex];
         pendingPackage.leaves.push(leaf);
-        pendingPackage.toChainIds.push(toChainId);
 
-        emit MsgHashAdded(leaf, toChainId, msg.sender);
+        emit MsgHashAdded(pendingPackage.packageIndex, msg.sender, msgHash, toChainId, leaf);
 
         if (pendingPackage.leaves.length >= MAX_PACKAGE_MESSAGES) {
             console.log("MAX_PACKAGE_MESSAGES", pendingPackage.leaves.length);
@@ -41,13 +40,13 @@ contract SendPort is ISendPort {
 
     function pack() public {
         // testing ignore
-        // require(pendingPackage.createTime + PACK_INTERVAL <= block.timestamp, "SendPort::pack: pack interval too short");
+        // require(packages[pendingIndex].createTime + PACK_INTERVAL <= block.timestamp, "SendPort::pack: pack interval too short");
 
        _pack();
     }
 
-    function getPackedPackage(uint index) public view returns (Package memory) {
-        return packages[index];
+    function getPackage(uint packageIndex) public view returns (Package memory) {
+        return packages[packageIndex];
     }
 
     function getPendingPackage() public view returns (Package memory) {
@@ -61,12 +60,12 @@ contract SendPort is ISendPort {
             _leaves = _computeLeaves(_leaves);
         }
         pendingPackage.root = _leaves[0];
-        pendingPackage.packedTime = block.timestamp;
+        pendingPackage.packTime = block.timestamp;
 
-        emit Packed(pendingPackage.index, pendingPackage.packedTime, pendingPackage.root);
+        emit Packed(pendingPackage.packageIndex, pendingPackage.packTime, pendingPackage.root);
 
-        pendingIndex = pendingPackage.index + 1;
-        packages[pendingIndex] = Package(pendingIndex, bytes32(0), new bytes32[](0), new uint[](0), pendingPackage.packedTime, 0);
+        pendingIndex = pendingPackage.packageIndex + 1;
+        packages[pendingIndex] = Package(pendingIndex, bytes32(0), new bytes32[](0), pendingPackage.packTime, 0);
     }
 
     function _computeLeaves(bytes32[] memory _leaves) pure internal returns (bytes32[] memory _nextLeaves) {

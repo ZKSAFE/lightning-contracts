@@ -62,7 +62,7 @@ describe('LockBridge.test', function () {
         await print()
     })
 
-    let rootIndex
+    let packageIndex
     let crossPackage
     it('cross', async function () {
         await sendPort.pack()
@@ -70,13 +70,13 @@ describe('LockBridge.test', function () {
         let pendingPackage = await sendPort.getPendingPackage()
         console.log('pendingPackage:', pendingPackage)
 
-        rootIndex = n(pendingPackage.index) - 1
-        crossPackage = await sendPort.getPackedPackage(rootIndex)
+        packageIndex = n(pendingPackage.packageIndex) - 1
+        crossPackage = await sendPort.getPackage(packageIndex)
         console.log('crossPackage:', crossPackage)
         
         await toBridge.receivePackages([{
             fromChainId: chainId,
-            rootIndex: rootIndex,
+            packageIndex: packageIndex,
             root: crossPackage.root
         }])
         console.log('toBridge.receivePackages() done')
@@ -85,13 +85,13 @@ describe('LockBridge.test', function () {
     it('transferFrom', async function () {
         let merkleTree = new MerkleTree(crossPackage.leaves, keccak256, { hashLeaves: false, sortPairs: true })
         console.log('merkleTree.getHexRoot:', merkleTree.getHexRoot())
-        console.log('toBridge.getRoot():', await toBridge.getRoot(chainId, rootIndex))
+        console.log('toBridge.getRoot():', await toBridge.getRoot(chainId, packageIndex))
 
         for (let i=1; i<=4; i++) {
             let leaf = crossPackage.leaves[i-1]
             let proof = merkleTree.getHexProof(leaf)
             let amount = s(m(i*10, 18))
-            await toBridge.connect(accounts[i]).transferFrom(chainId, rootIndex, proof, usdt.address, amount, accounts[i].address)
+            await toBridge.connect(accounts[i]).transferFrom(chainId, packageIndex, proof, usdt.address, amount, accounts[i].address)
         }
 
         await print()
