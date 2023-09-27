@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IReceivePort.sol";
 
-abstract contract ReceivePort is IReceivePort {
+abstract contract ReceivePort is IReceivePort, Ownable {
 
     //fromChainId => packageIndex => root
     mapping(uint => mapping(uint => bytes32)) public roots;
 
     constructor() {}
 
-    function receivePackages(Package[] calldata packages) public {
+    function receivePackages(Package[] calldata packages) public onlyOwner {
         for (uint i = 0; i < packages.length; i++) {
             Package calldata p = packages[i];
             require(roots[p.fromChainId][p.packageIndex] == bytes32(0), "ReceivePort::receivePackages: package already exist");
