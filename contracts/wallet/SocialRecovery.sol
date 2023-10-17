@@ -43,6 +43,10 @@ contract SocialRecovery is IERC165 {
         original = address(this);
     }
 
+    function setOwner(address _owner) internal {
+        owner = _owner;
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
             interfaceId == this.supportsInterface.selector || // ERC165

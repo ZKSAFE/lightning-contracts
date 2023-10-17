@@ -16,6 +16,8 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery, IERC1271 {
         address indexed newBundler
     );
 
+    bool internal isInit;
+
     uint32 public valid = 1; //to make AtomSign invalid
 
     address public bundler;
@@ -30,11 +32,29 @@ contract SmartWallet is ReentrancyGuard, SocialRecovery, IERC1271 {
         _;
     }
 
-    constructor(address _owner, address _bundler) SocialRecovery(_owner) {
-        bundler = _bundler;
+
+    constructor() SocialRecovery(address(0)) {
+        
     }
 
     receive() external payable {}
+
+    function init(address _owner, address _bundler, address to, uint value, bytes calldata data) public {
+        require(!isInit, "init() runs only once");
+        isInit = true;
+
+        bundler = _bundler;
+        setOwner(_owner);
+
+        if (to != address(0)) {
+            (bool success, bytes memory result) = to.call{value: value}(data);
+            if (!success) {
+                assembly {
+                    revert(add(result, 32), mload(result))
+                }
+            }
+        }
+    }
 
     function supportsInterface(
         bytes4 interfaceId
