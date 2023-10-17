@@ -15,6 +15,14 @@ const { BigNumber } = require('ethers')
 // const factoryAddr = 0xBb77D8caB687A32fA09388807Db4C439DC281f10
 // const walletAddr = 0x34aFD2d2C4d81B2f60e2399D6580DeAa8Cc5781B
 
+// 2023-10-9 op
+// deployer: 0x6476ee16BdAdD3623A5dc2566bcb534cAaA6cD61
+// multicall deployed: 0x0474d169D5d89f060D3e92861d787F4bE80A71dd
+// const bundlerManagerAddr = 0x694dD96Ce948Fa6eE48BfA4B0e97B2aB96568B27
+// const bundlerAddr = 0x4B394eCf83dB82250dd5D988dF413A5a9092dd2e
+// const factoryAddr = 0x0554CE0BA18f6b2744973476838dB12FaE77bF94
+// const walletAddr = 0xeACf5c999BEf71d4e14f3948E83151260Ff3B5C6
+
 async function main() {
 	const accounts = await hre.ethers.getSigners()
 	const signer = accounts[0]
@@ -24,10 +32,10 @@ async function main() {
 	const chainId = (await provider.getNetwork()).chainId
 	console.log('chainId:', chainId)
 
-	// const Multicall = await ethers.getContractFactory('Multicall')
-	// let multicall = await Multicall.deploy()
-	// await multicall.deployed()
-	// console.log('multicall deployed:', multicall.address)
+	const Multicall = await ethers.getContractFactory('Multicall')
+	let multicall = await Multicall.deploy()
+	await multicall.deployed()
+	console.log('multicall deployed:', multicall.address)
 
 	const BundlerManager = await ethers.getContractFactory('BundlerManager')
 	let bundlerManager = await BundlerManager.deploy()

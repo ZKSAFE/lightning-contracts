@@ -5,13 +5,21 @@ const { m, d, b, n, s } = require('../test/help/BigNumberHelp')
 const MAX_UINT256 = b('115792089237316195423570985008687907853269984665640564039457584007913129639935')
 
 //2023-9-3 goerli
-const bundlerManagerAddr = '0xee428Df259DBAfb297ae35675Ac59eD988B5eA0D'
-const bundlerAddr = '0x8C1C64E6e5a5e31A9B6bd6728c2ad37838a0D301'
-const factoryAddr = '0xBb77D8caB687A32fA09388807Db4C439DC281f10'
-const walletAddr = '0x34aFD2d2C4d81B2f60e2399D6580DeAa8Cc5781B'
+// const bundlerManagerAddr = '0xee428Df259DBAfb297ae35675Ac59eD988B5eA0D'
+// const bundlerAddr = '0x8C1C64E6e5a5e31A9B6bd6728c2ad37838a0D301'
+// const factoryAddr = '0xBb77D8caB687A32fA09388807Db4C439DC281f10'
+// const walletAddr = '0x34aFD2d2C4d81B2f60e2399D6580DeAa8Cc5781B'
 
 const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
-const USDC_CONTRACT_ADDRESS = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'
+// const USDC_CONTRACT_ADDRESS = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'
+
+// 2023-10-9 op
+const bundlerManagerAddr = '0x694dD96Ce948Fa6eE48BfA4B0e97B2aB96568B27'
+const bundlerAddr = '0x4B394eCf83dB82250dd5D988dF413A5a9092dd2e'
+const factoryAddr = '0x0554CE0BA18f6b2744973476838dB12FaE77bF94'
+const walletAddr = '0xeACf5c999BEf71d4e14f3948E83151260Ff3B5C6'
+const USDT_CONTRACT_ADDRESS = '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58'
+
 
 var signer
 var chainId
@@ -27,7 +35,7 @@ async function main() {
 
     //attach
     const ERC20 = await ethers.getContractFactory('MockERC20')
-    let usdc = ERC20.attach(USDC_CONTRACT_ADDRESS)
+    let usdt = ERC20.attach(USDT_CONTRACT_ADDRESS)
 
     const BundlerManager = await ethers.getContractFactory('BundlerManager')
     let bundlerManager = BundlerManager.attach(bundlerManagerAddr)
@@ -47,22 +55,17 @@ async function main() {
     let value = 0
     let data = '0x'
 
-    to = usdc.address
+    to = bundler.address
     value = 0
-    data = ERC20.interface.encodeFunctionData('transfer(address,uint256)', [SWAP_ROUTER_ADDRESS, 1])
-    console.log('to:', to)
-    console.log('value:', value)
-    console.log('data:', data)
+    data = ERC20.interface.encodeFunctionData('transfer(address,uint256)', ['0x82D5d55f7BffD3eEc52ab0764F56c7A588799d04', m(15, 6)])
+    data = Bundler.interface.encodeFunctionData('bundlerCallback(address,uint256,bytes)', [USDT_CONTRACT_ADDRESS, 0, data])
     callArr.push({ to, value, data })
 
-    console.log('accounts[0] address:', accounts[0].address)
-    console.log('wallet.address:', wallet.address)
     let p = await atomSign(accounts[0], wallet.address, callArr)
-    console.log(p)
     let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [p.atomCallBytes, p.deadline, p.signature])
-    console.log('calldata with signature:', calldata)
+
     await bundler.executeOperation(wallet.address, calldata)
-    console.log('executeOperation done')
+    console.log('done')
 }
 
 
