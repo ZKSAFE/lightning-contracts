@@ -16,6 +16,7 @@ const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 const USDT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+const DAI_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933'
 const BITCOIN_ADDRESS = '0x72e4f9f808c49a2a61de9c5896298920dc4eeea9'
 
@@ -23,6 +24,7 @@ const NATIVE_ETH = new Ether(ChainId)
 const WETH_TOKEN = new Token(ChainId, WETH_ADDRESS, 18, 'WETH', 'Wrapped Ether')
 const USDC_TOKEN = new Token(ChainId, USDC_ADDRESS, 6, 'USDC', 'USD Coin')
 const USDT_TOKEN = new Token(ChainId, USDT_ADDRESS, 6, 'USDT', 'Tether USD')
+const DAI_TOKEN = new Token(ChainId, DAI_ADDRESS, 18, 'DAI', 'Dai Stablecoin')
 const PEPE_TOKEN = new Token(ChainId, PEPE_ADDRESS, 18, 'PEPE', 'Pepe')
 const BITCOIN_TOKEN = new Token(ChainId, BITCOIN_ADDRESS, 18, 'BITCOIN', 'BITCOIN')
 
@@ -51,78 +53,119 @@ describe('MultiQuoter.test', function () {
         ERC20 = await ethers.getContractFactory('MockERC20', signer)
 
         const MultiQuoter = await ethers.getContractFactory('MultiQuoter')
-        // multiQuoter = await MultiQuoter.deploy(QUOTER_ADDRESS, POOL_FACTORY_ADDRESS)
-        // await multiQuoter.deployed()
-        multiQuoter = MultiQuoter.attach('0xcb0a9835cdf63c84fe80fcc59d91d7505871c98b')
+        multiQuoter = await MultiQuoter.deploy(QUOTER_ADDRESS, POOL_FACTORY_ADDRESS)
+        await multiQuoter.deployed()
+        // multiQuoter = MultiQuoter.attach('0xcb0a9835cdf63c84fe80fcc59d91d7505871c98b')
         console.log('const multiQuoterAddr =', multiQuoter.address)
     })
 
-    it('quote amountOut USDC > WETH > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountIn = m(10000, 6)
+    // it('quote amountOut USDC > WETH > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountIn = m(10000, 6)
 
-        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters_WETH(tokenIn, tokenOut)
-        let poolStates = await multiQuoter.getPoolStates(poolImmutables)
-        let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
-        let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
-        let amountOuts = await multiQuoter.callStatic.aggregate(callDatas)
-        let { routerPools, amountOut } = getHighestAmountOut(routerPoolsArr, amountOuts)
+    //     let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters_WETH(tokenIn, tokenOut)
+    //     let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+    //     let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+    //     let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
+    //     let amountOuts = await multiQuoter.callStatic.aggregate(callDatas)
+    //     let { routerPools, amountOut } = getHighestAmountOut(routerPoolsArr, amountOuts)
 
-        console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
-    })
+    //     console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    // })
 
-    it('quote amountIn USDC > WETH > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountOut = m(10000000, 18)
+    // it('quote amountIn USDC > WETH > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountOut = m(10000000, 18)
 
-        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters_WETH(tokenIn, tokenOut)
-        let poolStates = await multiQuoter.getPoolStates(poolImmutables)
-        let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
-        let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
-        let amountIns = await multiQuoter.callStatic.aggregate(callDatas)
-        let { routerPools, amountIn } = getLowestAmountIn(routerPoolsArr, amountIns)
+    //     let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters_WETH(tokenIn, tokenOut)
+    //     let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+    //     let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+    //     let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
+    //     let amountIns = await multiQuoter.callStatic.aggregate(callDatas)
+    //     let { routerPools, amountIn } = getLowestAmountIn(routerPoolsArr, amountIns)
 
-        console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
-    })
+    //     console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    // })
 
-    it('quote amountOut USDC > ETH', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = NATIVE_ETH
-        let amountIn = m(10000, 6)
+    // it('quote amountOut USDC > ETH', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = NATIVE_ETH
+    //     let amountIn = m(10000, 6)
 
-        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
-        let poolStates = await multiQuoter.getPoolStates(poolImmutables)
-        let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
-        let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
-        let amountOuts = await multiQuoter.callStatic.aggregate(callDatas)
-        let { routerPools, amountOut } = getHighestAmountOut(routerPoolsArr, amountOuts)
+    //     let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+    //     let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+    //     let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+    //     let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
+    //     let amountOuts = await multiQuoter.callStatic.aggregate(callDatas)
+    //     let { routerPools, amountOut } = getHighestAmountOut(routerPoolsArr, amountOuts)
 
-        console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
-    })
+    //     console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    // })
 
-    it('quote amountIn USDC > ETH', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = NATIVE_ETH
-        let amountOut = m(1, 18)
+    // it('quote amountIn USDC > ETH', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = NATIVE_ETH
+    //     let amountOut = m(1, 18)
 
-        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
-        let poolStates = await multiQuoter.getPoolStates(poolImmutables)
-        let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
-        let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
-        let amountIns = await multiQuoter.callStatic.aggregate(callDatas)
-        let { routerPools, amountIn } = getLowestAmountIn(routerPoolsArr, amountIns)
+    //     let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+    //     let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+    //     let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+    //     let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
+    //     let amountIns = await multiQuoter.callStatic.aggregate(callDatas)
+    //     let { routerPools, amountIn } = getLowestAmountIn(routerPoolsArr, amountIns)
 
-        console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
-    })
+    //     console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    // })
 
-    it('quote amountOut USDC > ETH', async function () {
+    // it('quote amountOut USDC > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountIn = m(1, 6)
+
+    //     let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+    //     let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+    //     let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+    //     let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
+    //     let amountOuts = await multiQuoter.callStatic.aggregate(callDatas)
+    //     let { routerPools, amountOut } = getHighestAmountOut(routerPoolsArr, amountOuts)
+
+    //     console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    // })
+
+    // it('quote amountIn USDC > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountOut = m(10000000, 18)
+
+    //     let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+    //     let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+    //     let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+    //     let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
+    //     let amountIns = await multiQuoter.callStatic.aggregate(callDatas)
+    //     let { routerPools, amountIn } = getLowestAmountIn(routerPoolsArr, amountIns)
+
+    //     console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    // })
+
+
+    ///////////////////////////////
+    ////////    Advance     ///////
+    ///////////////////////////////
+
+
+    it('quote amountOut USDC > WETH > PEPE & USDC > PEPE', async function () {
         let tokenIn = USDC_TOKEN
         let tokenOut = PEPE_TOKEN
         let amountIn = m(1, 6)
 
-        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters_WETH(tokenIn, tokenOut)
+        let r = getRouters(tokenIn, tokenOut)
+        routerPoolAddrsArr = routerPoolAddrsArr.concat(r.routerPoolAddrsArr)
+        poolConsts = poolConsts.concat(r.poolConsts)
+        poolImmutables = poolImmutables.concat(r.poolImmutables)
+
         let poolStates = await multiQuoter.getPoolStates(poolImmutables)
         let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
         let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
@@ -132,12 +175,17 @@ describe('MultiQuoter.test', function () {
         console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
     })
 
-    it('quote amountIn USDC > ETH', async function () {
+    it('quote amountIn USDC > WETH > PEPE & USDC > PEPE', async function () {
         let tokenIn = USDC_TOKEN
         let tokenOut = PEPE_TOKEN
         let amountOut = m(10000000, 18)
 
-        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters_WETH(tokenIn, tokenOut)
+        let r = getRouters(tokenIn, tokenOut)
+        routerPoolAddrsArr = routerPoolAddrsArr.concat(r.routerPoolAddrsArr)
+        poolConsts = poolConsts.concat(r.poolConsts)
+        poolImmutables = poolImmutables.concat(r.poolImmutables)
+
         let poolStates = await multiQuoter.getPoolStates(poolImmutables)
         let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
         let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
@@ -147,6 +195,145 @@ describe('MultiQuoter.test', function () {
         console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
     })
 
+    it('quote amountOut USDC > ETH & USDC > USD > ETH', async function () {
+        let tokenIn = USDC_TOKEN
+        let tokenOut = NATIVE_ETH
+        let amountIn = m(10, 6)
+
+        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+        let r = getRouters_USD(tokenIn, tokenOut)
+        routerPoolAddrsArr = routerPoolAddrsArr.concat(r.routerPoolAddrsArr)
+        poolConsts = poolConsts.concat(r.poolConsts)
+        poolImmutables = poolImmutables.concat(r.poolImmutables)
+
+        let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+        let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+        let callDatas = getCallDatasForAmountOut(tokenIn, amountIn, routerPoolsArr, tokenOut)
+        let amountOuts = await multiQuoter.callStatic.aggregate(callDatas)
+        let { routerPools, amountOut } = getHighestAmountOut(routerPoolsArr, amountOuts)
+
+        console.log('best:', s(amountOut), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    })
+
+    it('quote amountIn USDC > ETH & USDC > USD > ETH', async function () {
+        let tokenIn = USDC_TOKEN
+        let tokenOut = NATIVE_ETH
+        let amountOut = m(1, 16)
+
+        let { routerPoolAddrsArr, poolConsts, poolImmutables } = getRouters(tokenIn, tokenOut)
+        let r = getRouters_USD(tokenIn, tokenOut)
+        routerPoolAddrsArr = routerPoolAddrsArr.concat(r.routerPoolAddrsArr)
+        poolConsts = poolConsts.concat(r.poolConsts)
+        poolImmutables = poolImmutables.concat(r.poolImmutables)
+
+        let poolStates = await multiQuoter.getPoolStates(poolImmutables)
+        let routerPoolsArr = getRouterPoolsArr(poolStates, poolConsts, routerPoolAddrsArr)
+        let callDatas = getCallDatasForAmountIn(tokenIn, routerPoolsArr, tokenOut, amountOut)
+        let amountIns = await multiQuoter.callStatic.aggregate(callDatas)
+        let { routerPools, amountIn } = getLowestAmountIn(routerPoolsArr, amountIns)
+
+        console.log('best:', s(amountIn), 'routerPools:', util.inspect(routerPools, false, 3, true))
+    })
+
+
+
+
+    function getRouters_USD(tokenIn, tokenOut) {
+        let routerPoolAddrsArr = []
+        let poolConsts = []
+        let poolImmutables = []
+        let feeArr = [FeeAmount.HIGH, FeeAmount.MEDIUM, FeeAmount.LOW, FeeAmount.LOWEST]
+        
+        let tokenUSDs = [USDC_TOKEN, USDT_TOKEN]
+        let indexIn = tokenUSDs.indexOf(tokenIn)
+        let indexOut = tokenUSDs.indexOf(tokenOut)
+
+        if (indexIn == -1 && indexOut >= 0) { //tokenOut is USD
+
+            console.log('tokenOut is USD')
+            tokenUSDs.splice(indexOut, 1)
+            for (let tokenUSD of tokenUSDs) {
+                //TOKEN -> USD
+                for (let fee0 of feeArr) {
+                    let pool0Addr = Pool.getAddress(
+                        tokenIn.isNative ? WETH_TOKEN : tokenIn, 
+                        tokenUSD, 
+                        fee0, 
+                        undefined, 
+                        POOL_FACTORY_ADDRESS
+                    )
+                    poolImmutables.push({
+                        tokenA: tokenIn.isNative ? WETH_TOKEN.address : tokenIn.address,
+                        tokenB: tokenUSD.address,
+                        fee: fee0
+                    })
+                    poolConsts.push({ tokenIn: tokenIn, tokenOut: tokenUSD, fee: fee0 })
+                    
+                    //USD -> USD
+                    let pool1Addr = Pool.getAddress(
+                        tokenUSD, 
+                        tokenOut, 
+                        FeeAmount.LOWEST, 
+                        undefined, 
+                        POOL_FACTORY_ADDRESS
+                    )
+                    poolImmutables.push({
+                        tokenA: tokenUSD.address,
+                        tokenB: tokenOut.address,
+                        fee: FeeAmount.LOWEST
+                    })
+                    poolConsts.push({ tokenIn: tokenUSD, tokenOut: tokenOut, fee: FeeAmount.LOWEST })
+
+                    routerPoolAddrsArr.push([pool0Addr, pool1Addr])
+                }
+            }
+
+        } else if (indexIn >= 0 && indexOut == -1) { //tokenIn is USD
+
+            console.log('tokenIn is USD')
+            tokenUSDs.splice(indexIn, 1)
+            for (let tokenUSD of tokenUSDs) {
+                //USD -> USD
+                let pool0Addr = Pool.getAddress(
+                    tokenIn, 
+                    tokenUSD, 
+                    FeeAmount.LOWEST, 
+                    undefined, 
+                    POOL_FACTORY_ADDRESS
+                )
+                poolImmutables.push({
+                    tokenA: tokenIn.address,
+                    tokenB: tokenUSD.address,
+                    fee: FeeAmount.LOWEST
+                })
+                poolConsts.push({ tokenIn: tokenIn, tokenOut: tokenUSD, fee: FeeAmount.LOWEST })
+
+                for (let fee1 of feeArr) {
+                    //USD -> TOKEN
+                    let pool1Addr = Pool.getAddress(
+                        tokenUSD, 
+                        tokenOut.isNative ? WETH_TOKEN : tokenOut, 
+                        fee1, 
+                        undefined, 
+                        POOL_FACTORY_ADDRESS
+                    )
+                    poolImmutables.push({
+                        tokenA: tokenUSD.address,
+                        tokenB: tokenOut.isNative ? WETH_TOKEN.address : tokenOut.address,
+                        fee: fee1
+                    })
+                    poolConsts.push({ tokenIn: tokenUSD, tokenOut: tokenOut, fee: fee1 })
+                    
+                    routerPoolAddrsArr.push([pool0Addr, pool1Addr])
+                }
+            }
+
+        } else {
+            throw new Error('only one of tokenIn and tokenOut MUST be stable coin')
+        }
+
+        return { routerPoolAddrsArr, poolConsts, poolImmutables }
+    }
 
 
     function getRouters_WETH(tokenIn, tokenOut) {
@@ -216,6 +403,9 @@ describe('MultiQuoter.test', function () {
         for (let i = 0; i < poolStates.length; i++) {
             let poolState = poolStates[i]
             let poolConst = poolConsts[i]
+            
+            console.log('liquidity='+s(poolState.liquidity), 
+                poolConst.tokenIn.symbol + '-' + poolConst.fee + '-' + poolConst.tokenOut.symbol)
 
             if (s(poolState.liquidity) != '0') {
                 let pool = new Pool(
@@ -229,8 +419,6 @@ describe('MultiQuoter.test', function () {
                 pool.state = poolState
                 pool.const = poolConst
                 addrToPool[poolState.poolAddr] = pool
-            } else {
-                console.log('liquidity=0', poolConst.tokenIn.symbol, poolConst.tokenOut.symbol, poolConst.fee)
             }
         }
 

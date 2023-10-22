@@ -43,8 +43,10 @@ contract MultiQuoter {
         for (uint i = 0; i < callDatas.length; i++) {
             (bool success, bytes memory ret) = quoterAddr.call(callDatas[i]);
             if (success) {
+                console.log("[aggregate] success", uint(bytes32(ret)));
                 returnDatas[i] = uint(bytes32(ret));
             } else {
+                console.log("[aggregate] fail", 0);
                 returnDatas[i] = 0;
             }
         }
