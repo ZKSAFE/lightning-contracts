@@ -60,14 +60,14 @@ describe('SmartWallet-Bundler.test', function () {
     })
 
 
-    let predictedAddr
+    let wallet0Addr
     it('computeWalletAddr && deposit', async function () {
         let nonce = await factory.nonceOf(accounts[0].address)
         nonce++
-        predictedAddr = await factory.computeWalletAddr(accounts[0].address, nonce)
+        wallet0Addr = await factory.computeWalletAddr(accounts[0].address, nonce)
     
-        await usdc.transfer(predictedAddr, m(10, 6))
-        console.log('deposit USDC to', predictedAddr)
+        await usdc.transfer(wallet0Addr, m(10, 6))
+        console.log('deposit USDC to wallet0Addr', wallet0Addr)
 
         await print()
     })
@@ -76,11 +76,107 @@ describe('SmartWallet-Bundler.test', function () {
     it('createWallet', async function () {
         await factory.createWallet(accounts[0].address, bundler.address)
         
-        let hasWallet =  await factory.wallets(predictedAddr)
+        let hasWallet =  await factory.wallets(wallet0Addr)
         console.log('wallet is created:', hasWallet)
 
         await print()
     })
+
+    
+    let wallet1Addr
+    it('computeWalletAddr && deposit', async function () {
+        let nonce = await factory.nonceOf(accounts[1].address)
+        nonce++
+        wallet1Addr = await factory.computeWalletAddr(accounts[1].address, nonce)
+    
+        await usdc.transfer(wallet1Addr, m(10, 6))
+        console.log('deposit USDC to wallet1Addr', wallet1Addr)
+
+        await print()
+    })
+
+
+    it('bundlerManager bundle: createWallet & transfer', async function () {
+        const BundlerManager = await ethers.getContractFactory('BundlerManager')
+        const Bundler = await ethers.getContractFactory('Bundler')
+        const WalletFactory = await ethers.getContractFactory('WalletFactory')
+        const SmartWallet = await ethers.getContractFactory('SmartWallet')
+
+        let atomSignParamsArr = []
+
+        //adminWallet: createWallet
+        let callArr = []
+        let to = '0x'
+        let value = 0
+        let data = '0x'
+
+        to = factory.address
+        value = 0
+        data = WalletFactory.interface.encodeFunctionData('createWallet(address,address)',
+            [accounts[1].address, bundler.address])
+        callArr.push({ to, value, data })
+
+        let atomSignParams = await atomSign(accounts[0], wallet0Addr, callArr)
+        atomSignParamsArr.push(atomSignParams)
+
+        //wallet1: transfer
+        callArr = []
+        to = '0x'
+        value = 0
+        data = '0x'
+
+        to = usdt.address
+        value = 0
+        const ERC = await ethers.getContractFactory('MockERC20')
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1, 18)])
+        callArr.push({ to, value, data })
+
+        atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
+        atomSignParamsArr.push(atomSignParams)
+
+
+        let bundleDataArr = []
+        for (let p of atomSignParamsArr) {
+            let atomSignData = SmartWallet.interface.encodeFunctionData('atomSignCall',
+                [p.atomCallbytes, p.deadline, p.signature])
+
+            let bundleData = Bundler.interface.encodeFunctionData('executeOperation', [p.fromWallet, atomSignData])
+            bundleDataArr.push(bundleData)
+        }
+
+        let estimateGas = await bundlerManager.estimateGas.bundle(bundleDataArr)
+        await bundlerManager.bundle(bundleDataArr)
+        console.log('bundle done gasCost:', estimateGas)
+
+        await print()
+    })
+
+
+    async function atomSign(signer, fromWallet, callArr) {
+        let atomCallbytes = '0x'
+        for (let i=0; i<callArr.length; i++) {
+            let to = callArr[i].to
+            let value = callArr[i].value
+            let data = callArr[i].data
+            
+            let len = utils.arrayify(data).length
+            atomCallbytes = utils.hexConcat([atomCallbytes, to, utils.hexZeroPad(value, 32), utils.hexZeroPad(len, 32), data])
+        }
+
+        let deadline = parseInt(Date.now() / 1000) + 600;
+        let chainId = (await provider.getNetwork()).chainId
+        let SmartWallet = await ethers.getContractFactory('SmartWallet')
+        let hasWallet =  await factory.wallets(fromWallet)
+        let valid = hasWallet ? await SmartWallet.attach(fromWallet).valid() : 0
+
+        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallbytes, deadline, '0x'])
+        calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
+
+        let hash = utils.keccak256(calldata)
+        let signature = await signer.signMessage(utils.arrayify(hash))
+
+        return { atomCallbytes, deadline, chainId, fromWallet, valid, signature }
+    }
 
 
     async function print() {
@@ -89,7 +185,8 @@ describe('SmartWallet-Bundler.test', function () {
         console.log('account0 usdc:', d(await usdc.balanceOf(accounts[0].address), 6), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
         console.log('account1 usdc:', d(await usdc.balanceOf(accounts[1].address), 6), 'eth:', d(await provider.getBalance(accounts[1].address), 18))
         console.log('bundler usdc:', d(await usdc.balanceOf(bundler.address), 6), 'eth:', d(await provider.getBalance(bundler.address), 18))
-        console.log('wallet usdc:', d(await usdc.balanceOf(predictedAddr), 6), 'eth:', d(await provider.getBalance(predictedAddr), 18))
+        wallet0Addr && console.log('wallet0 usdc:', d(await usdc.balanceOf(wallet0Addr), 6), 'eth:', d(await provider.getBalance(wallet0Addr), 18))
+        wallet1Addr && console.log('wallet1 usdc:', d(await usdc.balanceOf(wallet1Addr), 6), 'eth:', d(await provider.getBalance(wallet1Addr), 18))
 
         console.log('')
     }
