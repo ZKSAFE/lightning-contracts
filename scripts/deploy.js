@@ -11,24 +11,31 @@ const { m, d, b, n, s } = require('../test/help/BigNumberHelp')
 
 // 2023-9-3 goerli
 // deployer: 0x6476ee16BdAdD3623A5dc2566bcb534cAaA6cD61
-const bundlerManagerAddr = '0xee428Df259DBAfb297ae35675Ac59eD988B5eA0D'
-const bundlerAddr = '0x8C1C64E6e5a5e31A9B6bd6728c2ad37838a0D301'
+// const bundlerManagerAddr = '0xee428Df259DBAfb297ae35675Ac59eD988B5eA0D'
+// const bundlerAddr = '0x8C1C64E6e5a5e31A9B6bd6728c2ad37838a0D301'
 // const factoryAddr = 0xBb77D8caB687A32fA09388807Db4C439DC281f10
 // const walletAddr = 0x34aFD2d2C4d81B2f60e2399D6580DeAa8Cc5781B
-const USDCAddr = '0x07865c6e87b9f70255377e024ace6630c1eaa37f'
-const DAIAddr = '0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844'
+// const USDCAddr = '0x07865c6e87b9f70255377e024ace6630c1eaa37f'
+// const DAIAddr = '0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844'
 
 // 2023-10-9 op
 // deployer: 0x6476ee16BdAdD3623A5dc2566bcb534cAaA6cD61
 // multicall deployed: 0x0474d169D5d89f060D3e92861d787F4bE80A71dd
-// const bundlerManagerAddr = 0x694dD96Ce948Fa6eE48BfA4B0e97B2aB96568B27
-// const bundlerAddr = 0x4B394eCf83dB82250dd5D988dF413A5a9092dd2e
+const bundlerManagerAddr = '0x694dD96Ce948Fa6eE48BfA4B0e97B2aB96568B27'
+const bundlerAddr = '0x4B394eCf83dB82250dd5D988dF413A5a9092dd2e'
 // const factoryAddr = 0x0554CE0BA18f6b2744973476838dB12FaE77bF94
 // const walletAddr = 0xeACf5c999BEf71d4e14f3948E83151260Ff3B5C6
+const USDCAddr = '0x7F5c764cBc14f9669B88837ca1490cCa17c31607'
+const USDTAddr = '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58'
+const DAIAddr = '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1'
 
 // 2023-10-18 goerli
-const factoryAddr = '0xc3E408dDF2e03e11890C212D6D976b3fD6B87F9f'
-const walletAddr = '0x398Eb1843310C1F5BE0D75BC4856C43a09d6354f'
+// const factoryAddr = '0xc3E408dDF2e03e11890C212D6D976b3fD6B87F9f'
+// const walletAddr = '0x398Eb1843310C1F5BE0D75BC4856C43a09d6354f'
+
+// 2023-10-26 op
+const factoryAddr = '0xB96D0886d070ce1Da127e73FE08B45725b629a33'
+const walletAddr = '0xc67AFdB0043Ba4F9627aDD41c85334073415895E'
 
 async function main() {
 	const accounts = await hre.ethers.getSigners()
@@ -57,7 +64,7 @@ async function main() {
 	// console.log('const bundlerAddr =', bundler.address)
 
 	const WalletFactory = await ethers.getContractFactory('WalletFactory')
-	// let factory = await WalletFactory.deploy([USDCAddr, DAIAddr])
+	// let factory = await WalletFactory.deploy([USDCAddr, USDTAddr, DAIAddr])
 	// await factory.deployed()
 	// console.log('const factoryAddr =', factory.address)
 	let factory = WalletFactory.attach(factoryAddr)
