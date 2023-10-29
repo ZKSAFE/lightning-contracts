@@ -26,8 +26,6 @@ contract MultiQuoter {
         address poolAddr;
         uint128 liquidity;
         PoolSlot0 slot0;
-        uint tokenAAmount;
-        uint tokenBAmount;
     }
 
     struct PoolImmutable {
@@ -41,11 +39,11 @@ contract MultiQuoter {
         poolFactoryAddr = _poolFactoryAddr;
     }
 
-    function aggregate(bytes[] memory callDatas) public returns (uint[] memory returnDatas) {
+    function aggregate(bytes[] memory callDatas, uint eachGaslimit) public returns (uint[] memory returnDatas) {
         returnDatas = new uint[](callDatas.length);
         for (uint i = 0; i < callDatas.length; i++) {
             uint before = gasleft();
-            (bool success, bytes memory ret) = quoterAddr.call{gas: 200000}(callDatas[i]);
+            (bool success, bytes memory ret) = quoterAddr.call{gas: eachGaslimit}(callDatas[i]);
             if (success) {
                 console.log("[aggregate] success", uint(bytes32(ret)), "gas used", before - gasleft());
                 returnDatas[i] = uint(bytes32(ret));
@@ -63,16 +61,14 @@ contract MultiQuoter {
             address poolAddr = IUniswapV3Factory(poolFactoryAddr).getPool(poolImmutable.tokenA, poolImmutable.tokenB, poolImmutable.fee);
             console.log("poolAddr", poolAddr);
 
-            IERC20(poolImmutable.tokenA).balanceOf(poolAddr);
-
             if (poolAddr == address(0)) {
-                poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false), 0, 0);
+                poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false));
 
             } else {
                 IUniswapV3PoolState pool = IUniswapV3PoolState(poolAddr);
                 uint128 liquidity = pool.liquidity();
                 if (liquidity == 0) {
-                    poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false), 0, 0);
+                    poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false));
                 } else {
                     (
                         uint160 sqrtPriceX96,
@@ -95,9 +91,7 @@ contract MultiQuoter {
                             observationCardinalityNext,
                             feeProtocol,
                             unlocked
-                        ),
-                        IERC20(poolImmutable.tokenA).balanceOf(poolAddr),
-                        IERC20(poolImmutable.tokenB).balanceOf(poolAddr)
+                        )
                     );
                 }
             }
