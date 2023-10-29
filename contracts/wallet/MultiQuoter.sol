@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
 import "@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "hardhat/console.sol";
 
 contract MultiQuoter {
@@ -25,6 +26,8 @@ contract MultiQuoter {
         address poolAddr;
         uint128 liquidity;
         PoolSlot0 slot0;
+        uint tokenAAmount;
+        uint tokenBAmount;
     }
 
     struct PoolImmutable {
@@ -41,12 +44,13 @@ contract MultiQuoter {
     function aggregate(bytes[] memory callDatas) public returns (uint[] memory returnDatas) {
         returnDatas = new uint[](callDatas.length);
         for (uint i = 0; i < callDatas.length; i++) {
-            (bool success, bytes memory ret) = quoterAddr.call(callDatas[i]);
+            uint before = gasleft();
+            (bool success, bytes memory ret) = quoterAddr.call{gas: 200000}(callDatas[i]);
             if (success) {
-                console.log("[aggregate] success", uint(bytes32(ret)));
+                console.log("[aggregate] success", uint(bytes32(ret)), "gas used", before - gasleft());
                 returnDatas[i] = uint(bytes32(ret));
             } else {
-                console.log("[aggregate] fail", 0);
+                console.log("[aggregate] fail", 0, "gas used", before - gasleft());
                 returnDatas[i] = 0;
             }
         }
@@ -57,16 +61,18 @@ contract MultiQuoter {
         for (uint i = 0; i < poolImmutables.length; i++) {
             PoolImmutable memory poolImmutable = poolImmutables[i];
             address poolAddr = IUniswapV3Factory(poolFactoryAddr).getPool(poolImmutable.tokenA, poolImmutable.tokenB, poolImmutable.fee);
-            console.log("poolAddr", poolAddr); 
+            console.log("poolAddr", poolAddr);
+
+            IERC20(poolImmutable.tokenA).balanceOf(poolAddr);
 
             if (poolAddr == address(0)) {
-                poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false));
+                poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false), 0, 0);
 
             } else {
                 IUniswapV3PoolState pool = IUniswapV3PoolState(poolAddr);
                 uint128 liquidity = pool.liquidity();
                 if (liquidity == 0) {
-                    poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false));
+                    poolStates[i] = PoolState(address(0), 0, PoolSlot0(0, 0, 0, 0, 0, 0, false), 0, 0);
                 } else {
                     (
                         uint160 sqrtPriceX96,
@@ -89,7 +95,9 @@ contract MultiQuoter {
                             observationCardinalityNext,
                             feeProtocol,
                             unlocked
-                        )
+                        ),
+                        IERC20(poolImmutable.tokenA).balanceOf(poolAddr),
+                        IERC20(poolImmutable.tokenB).balanceOf(poolAddr)
                     );
                 }
             }
