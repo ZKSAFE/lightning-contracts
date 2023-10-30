@@ -280,6 +280,9 @@ describe('MultiQuoter.test', function () {
     })
 
 
+
+
+
     function combine(routersInfo0, routersInfo1) {
         let r0 = routersInfo0
         let r1 = routersInfo1
@@ -305,7 +308,6 @@ describe('MultiQuoter.test', function () {
 
         return { routerPoolAddrsArr, poolConsts, poolImmutables }
     }
-
 
 
     async function getBestOfAmountOut(routersInfo, tokenIn, amountIn, tokenOut) {
@@ -336,7 +338,7 @@ describe('MultiQuoter.test', function () {
         let poolImmutables = []
         let feeArr = [FeeAmount.HIGH, FeeAmount.MEDIUM, FeeAmount.LOW, FeeAmount.LOWEST]
 
-        let tokenUSDs = [USDC_TOKEN, USDT_TOKEN]
+        let tokenUSDs = [USDC_TOKEN, USDT_TOKEN, DAI_TOKEN]
         let indexIn = tokenUSDs.indexOf(tokenIn)
         let indexOut = tokenUSDs.indexOf(tokenOut)
 
