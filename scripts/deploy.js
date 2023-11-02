@@ -2,6 +2,11 @@ const hre = require('hardhat')
 const { BigNumber } = require('ethers')
 const { m, d, b, n, s } = require('../test/help/BigNumberHelp')
 
+//op
+const POOL_FACTORY_ADDRESS = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006'
+const quoterV3Addr = '0x42651ae9f9aae9ac51fd155dd4e98240e11e1344'
+
 // 2023-6-7 op
 // bundler deployed: 0x7c801fc1840CDE461450Cda1815cd2FF9A8524aE
 // subBundler deployed: 0xd6322a2842b0818505Fd810179AC401c461E1397
@@ -48,6 +53,12 @@ async function main() {
 
 	const ERC20 = await ethers.getContractFactory('MockERC20')
     let usdc = ERC20.attach(USDCAddr)
+
+	const QuoterV3 = await ethers.getContractFactory('QuoterV3')
+	let quoterV3 = await QuoterV3.deploy(POOL_FACTORY_ADDRESS, WETH_ADDRESS)
+	await quoterV3.deployed()
+	console.log('const quoterV3Addr =', quoterV3.address)
+	return
 
 	// const Multicall = await ethers.getContractFactory('Multicall')
 	// let multicall = await Multicall.deploy()
