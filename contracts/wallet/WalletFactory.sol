@@ -10,14 +10,17 @@ contract WalletFactory {
 
     address[] public stableCoinArr;
 
+    uint public fee;
+
     mapping(address => uint32) public nonceOf;
 
     mapping(address => bool) public wallets;
 
     event WalletCreated(address wallet, address owner, address bundler, uint32 nonce);
 
-    constructor(address[] memory _stableCoinArr) {
+    constructor(address[] memory _stableCoinArr, uint _fee) {
         stableCoinArr = _stableCoinArr;
+        fee = _fee;
     }
 
     function createWallet(address owner, address bundler) public returns (address) {
@@ -26,19 +29,17 @@ contract WalletFactory {
         bytes32 salt = keccak256(abi.encodePacked(owner, nonce));
         SmartWallet wallet = new SmartWallet{salt: salt}();
 
-        console.log("createWallet:", address(wallet));
-
         bool isInit;
         for (uint i = 0; i < stableCoinArr.length; i++) {
             address stableCoinAddr = stableCoinArr[i];
-            uint fee = 10 ** uint(IERC20Metadata(stableCoinAddr).decimals());
-            if (IERC20(stableCoinAddr).balanceOf(address(wallet)) >= fee) {
-                wallet.init(owner, bundler, stableCoinAddr, 0, abi.encodeCall(IERC20.transfer, (bundler, fee)));
+            uint feeAmount = fee * 10 ** uint(IERC20Metadata(stableCoinAddr).decimals());
+            if (IERC20(stableCoinAddr).balanceOf(address(wallet)) >= feeAmount) {
+                wallet.init(owner, bundler, stableCoinAddr, 0, abi.encodeCall(IERC20.transfer, (bundler, feeAmount)));
                 isInit = true;
                 break;
             }
         }
-        require(isInit, "createWallet: need $1 fee in SmartWallet");
+        require(isInit, "createWallet: need $fee in SmartWallet");
         
         nonceOf[owner] = nonce;
         wallets[address(wallet)] = true;

@@ -21,6 +21,12 @@ contract Multicall {
         }
     }
     // Helper functions
+    function getBasefee() public view returns (uint256 basefee) {
+        basefee = block.basefee;
+    }
+    function getChainId() public view returns (uint256 chainid) {
+        chainid = block.chainid;
+    }
     function getEthBalance(address addr) public view returns (uint256 balance) {
         balance = addr.balance;
     }

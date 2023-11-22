@@ -7,11 +7,11 @@ contract SocialRecovery is IERC165 {
 
     event SocialRecoveryUpdated(address[] guardians, uint needGuardiansNum);
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(address previousOwner, address newOwner);
 
     event Cover(
         address indexed guardian,
-        address indexed newOwner,
+        address newOwner,
         uint doneNum
     );
 
