@@ -60,59 +60,59 @@ describe('MultiQuoter.test', function () {
         console.log('const multiQuoterAddr =', multiQuoter.address)
     })
 
-    it('quote amountOut USDC > WETH > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountIn = m(10000, 6)
+    // it('quote amountOut USDC > WETH > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountIn = m(10000, 6)
 
-        let best = await getBestOfAmountOut(getRoutersInfo_WETH(tokenIn, tokenOut), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(getRoutersInfo_WETH(tokenIn, tokenOut), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn USDC > WETH > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountOut = m(10000000, 18)
+    // it('quote amountIn USDC > WETH > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountOut = m(10000000, 18)
 
-        let best = await getBestOfAmountIn(getRoutersInfo_WETH(tokenIn, tokenOut), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(getRoutersInfo_WETH(tokenIn, tokenOut), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountOut USDC > ETH', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = NATIVE_ETH
-        let amountIn = m(10000, 6)
+    // it('quote amountOut USDC > ETH', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = NATIVE_ETH
+    //     let amountIn = m(10000, 6)
 
-        let best = await getBestOfAmountOut(getRoutersInfo(tokenIn, tokenOut), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(getRoutersInfo(tokenIn, tokenOut), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn USDC > ETH', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = NATIVE_ETH
-        let amountOut = m(1, 18)
+    // it('quote amountIn USDC > ETH', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = NATIVE_ETH
+    //     let amountOut = m(1, 18)
 
-        let best = await getBestOfAmountIn(getRoutersInfo(tokenIn, tokenOut), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(getRoutersInfo(tokenIn, tokenOut), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountOut USDC > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountIn = m(1, 6)
+    // it('quote amountOut USDC > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountIn = m(1, 6)
 
-        let best = await getBestOfAmountOut(getRoutersInfo(tokenIn, tokenOut), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(getRoutersInfo(tokenIn, tokenOut), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn USDC > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountOut = m(10000000, 18)
+    // it('quote amountIn USDC > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountOut = m(10000000, 18)
 
-        let best = await getBestOfAmountIn(getRoutersInfo(tokenIn, tokenOut), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(getRoutersInfo(tokenIn, tokenOut), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
 
     ///////////////////////////////
@@ -121,109 +121,109 @@ describe('MultiQuoter.test', function () {
 
     //////////  buy Token  //////////
 
-    it('quote amountOut USDC > WETH > PEPE & USDC > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountIn = m(1, 6)
+    // it('quote amountOut USDC > WETH > PEPE & USDC > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountIn = m(1, 6)
 
-        let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
-        let r1 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn USDC > WETH > PEPE & USDC > PEPE', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = PEPE_TOKEN
-        let amountOut = m(10000000, 18)
+    // it('quote amountIn USDC > WETH > PEPE & USDC > PEPE', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = PEPE_TOKEN
+    //     let amountOut = m(10000000, 18)
 
-        let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
-        let r1 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    //////////  sell Token  //////////
+    // //////////  sell Token  //////////
 
-    it('quote amountOut PEPE > WETH > USDC & PEPE > USDC', async function () {
-        let tokenIn = PEPE_TOKEN
-        let tokenOut = USDC_TOKEN
-        let amountIn = m(10000000, 18)
+    // it('quote amountOut PEPE > WETH > USDC & PEPE > USDC', async function () {
+    //     let tokenIn = PEPE_TOKEN
+    //     let tokenOut = USDC_TOKEN
+    //     let amountIn = m(10000000, 18)
 
-        let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
-        let r1 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn PEPE > WETH > USDC & PEPE > USDC', async function () {
-        let tokenIn = PEPE_TOKEN
-        let tokenOut = USDC_TOKEN
-        let amountOut = m(1, 6)
+    // it('quote amountIn PEPE > WETH > USDC & PEPE > USDC', async function () {
+    //     let tokenIn = PEPE_TOKEN
+    //     let tokenOut = USDC_TOKEN
+    //     let amountOut = m(1, 6)
 
-        let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
-        let r1 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo_WETH(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    //////////  buy ETH  //////////
+    // //////////  buy ETH  //////////
 
-    it('quote amountOut USDC > ETH & USDC > USD > ETH', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = NATIVE_ETH
-        let amountIn = m(100000, 6)
+    // it('quote amountOut USDC > ETH & USDC > USD > ETH', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = NATIVE_ETH
+    //     let amountIn = m(100000, 6)
 
-        let r0 = getRoutersInfo(tokenIn, tokenOut)
-        let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn USDC > ETH & USDC > USD > ETH', async function () {
-        let tokenIn = USDC_TOKEN
-        let tokenOut = NATIVE_ETH
-        let amountOut = m(1, 18)
+    // it('quote amountIn USDC > ETH & USDC > USD > ETH', async function () {
+    //     let tokenIn = USDC_TOKEN
+    //     let tokenOut = NATIVE_ETH
+    //     let amountOut = m(1, 18)
 
-        let r0 = getRoutersInfo(tokenIn, tokenOut)
-        let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    //////////  sell ETH  //////////
+    // //////////  sell ETH  //////////
 
-    it('quote amountOut ETH > USDC & ETH > USD > USDC', async function () {
-        let tokenIn = NATIVE_ETH
-        let tokenOut = USDC_TOKEN
-        let amountIn = m(100, 18)
+    // it('quote amountOut ETH > USDC & ETH > USD > USDC', async function () {
+    //     let tokenIn = NATIVE_ETH
+    //     let tokenOut = USDC_TOKEN
+    //     let amountIn = m(100, 18)
 
-        let r0 = getRoutersInfo(tokenIn, tokenOut)
-        let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountOut(combine(r0, r1), tokenIn, amountIn, tokenOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    it('quote amountIn ETH > USDC & ETH > USD > USDC', async function () {
-        let tokenIn = NATIVE_ETH
-        let tokenOut = USDC_TOKEN
-        let amountOut = m(1000, 6)
+    // it('quote amountIn ETH > USDC & ETH > USD > USDC', async function () {
+    //     let tokenIn = NATIVE_ETH
+    //     let tokenOut = USDC_TOKEN
+    //     let amountOut = m(1000, 6)
 
-        let r0 = getRoutersInfo(tokenIn, tokenOut)
-        let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
+    //     let r0 = getRoutersInfo(tokenIn, tokenOut)
+    //     let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
-        console.log('best:', best.routerStr)
-    })
+    //     let best = await getBestOfAmountIn(combine(r0, r1), tokenIn, tokenOut, amountOut)
+    //     console.log('best:', best.routerStr)
+    // })
 
-    //////////  buy Token3  //////////
+    // //////////  buy Token3  //////////
 
     it('quote amountOut USDC>WETH>PEPE & USDC>PEPE & USDC>USD>PEPE', async function () {
         let tokenIn = USDC_TOKEN

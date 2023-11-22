@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "./Bundler.sol";
+import "../wallet/Bundler.sol";
 import "hardhat/console.sol";
 
 /**
@@ -14,8 +14,8 @@ import "hardhat/console.sol";
  */
 contract UnsignedHelper {
 
-    //keccak256(abi.encodeCall(Bundler.bundlerCallback2, bytes.concat()));
-    bytes32 constant bundlerCallback2Hash = 0x3040d74aefb16bffade2625c6a7587044f8f4537c95cf5b0dd3dea04013898fb; 
+    //keccak256(abi.encodeCall(Bundler.bundlerAtomCallback, bytes.concat()));
+    bytes32 constant bundlerAtomCallbackHash = 0x3040d74aefb16bffade2625c6a7587044f8f4537c95cf5b0dd3dea04013898fb; 
 
     constructor() {
     }
@@ -38,9 +38,9 @@ contract UnsignedHelper {
             bytes memory result;
 
             bytes calldata data = atomCallBytes[i + 84:i + 84 + len];
-            if (keccak256(data) == bundlerCallback2Hash) {
+            if (keccak256(data) == bundlerAtomCallbackHash) {
                 (success, result) = to.call{value: value}(
-                    abi.encodeCall(Bundler.bundlerCallback2, unsignedData)
+                    abi.encodeCall(Bundler.bundlerAtomCallback, unsignedData)
                 );
             } else {
                 (success, result) = to.call{value: value}(data);
