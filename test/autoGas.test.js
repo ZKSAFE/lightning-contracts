@@ -5,6 +5,7 @@ const { ethers } = require('hardhat')
 const { computePoolAddress, FeeAmount, Pool, Route, SwapOptions, SwapQuoter, SwapRouter, Trade } = require('@uniswap/v3-sdk')
 const { SupportedChainId, Token, Ether, Currency, CurrencyAmount, Percent, TradeType } = require('@uniswap/sdk-core')
 const IUniswapV3PoolABI = require('@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json')
+const QuoterV3Help = require('./help/QuoterV3Help')
 
 //mainnet
 const ChainId = SupportedChainId.MAINNET
@@ -37,8 +38,6 @@ describe('autoGas.test', function () {
     let bundler
     let bundlerManager
     let factory
-    let QuoterV3
-    let quoterV3
     let autoGasHelp
 
 
@@ -74,8 +73,8 @@ describe('autoGas.test', function () {
         await factory.deployed()
         console.log('const factoryAddr =', factory.address)
         
-        QuoterV3 = await ethers.getContractFactory('QuoterV3')
-        quoterV3 = await QuoterV3.deploy(POOL_FACTORY_ADDRESS, WETH_ADDRESS)
+        const QuoterV3 = await ethers.getContractFactory('QuoterV3')
+        const quoterV3 = await QuoterV3.deploy(POOL_FACTORY_ADDRESS, WETH_ADDRESS)
         await quoterV3.deployed()
         console.log('const quoterV3Addr =', quoterV3.address)
         
@@ -83,6 +82,17 @@ describe('autoGas.test', function () {
         autoGasHelp = await AutoGasHelp.deploy()
         await autoGasHelp.deployed()
         console.log('const autoGasHelp =', autoGasHelp.address)
+
+        await QuoterV3Help.setup({
+            ChainId,
+            POOL_FACTORY_ADDRESS,
+            SWAP_ROUTER_ADDRESS,
+            WETH_ADDRESS,
+            USDC_ADDRESS,
+            USDT_ADDRESS,
+            DAI_ADDRESS,
+            QuoterV3Addr: quoterV3.address
+        })
     })
 
 
@@ -247,7 +257,7 @@ describe('autoGas.test', function () {
         let value = 0
         let data = '0x'
 
-        //bundler's USDs swap to adminWalletAddr's ETH
+        //1.bundler's USDs swap to adminWalletAddr's ETH
         let usdcBalance = await usdc.balanceOf(bundler.address)
         if (usdcBalance.gt(b(0))) {
             to = bundler.address
@@ -286,7 +296,7 @@ describe('autoGas.test', function () {
 
         console.log('ethOut:', d(ethOut, 18))
 
-        //adminWalletAddr transfer maxGas to adminEOA
+        //2.adminWalletAddr transfer maxGas to adminEOA
         to = adminWalletAddr
         value = 0
         let transferETHData = AutoGasHelp.interface.encodeFunctionData('transferETH(address,uint256)', [
@@ -297,7 +307,7 @@ describe('autoGas.test', function () {
         ])
         callArr.push({to, value, data})
 
-        //adminWalletAddr transfer left ETH to coldWalletAddr
+        //3.adminWalletAddr transfer left ETH to coldWalletAddr
         if (coldWalletAddr != adminWalletAddr) {
             to = adminWalletAddr
             value = 0
@@ -316,10 +326,10 @@ describe('autoGas.test', function () {
 
 
     async function swapFromBundler(tokenIn, tokenOut, amountIn, recipient) {
-        let r0 = getRoutersInfo(tokenIn, tokenOut)
-        let r1 = getRoutersInfo_USD(tokenIn, tokenOut)
+        let r0 = QuoterV3Help.getRoutersInfo(tokenIn, tokenOut)
+        let r1 = QuoterV3Help.getRoutersInfo_USD(tokenIn, tokenOut)
 
-        let best = await getBestOfAmountOut([...r0, ...r1], amountIn)
+        let best = await QuoterV3Help.getBestOfAmountOut([...r0, ...r1], amountIn)
         let amountOut = best.amountOut
         console.log('best:', best.routerStr)
 
@@ -388,224 +398,24 @@ describe('autoGas.test', function () {
     }
 
 
-    function getRoutersInfo_USD(tokenIn, tokenOut) {
-        let routerPoolsArr = []
-        let feeArr = [FeeAmount.HIGH, FeeAmount.MEDIUM, FeeAmount.LOW, FeeAmount.LOWEST]
-
-        let tokenUSDs = [USDC_TOKEN, USDT_TOKEN, DAI_TOKEN]
-        let indexIn = tokenUSDs.indexOf(tokenIn)
-        let indexOut = tokenUSDs.indexOf(tokenOut)
-
-        if (indexIn == -1 && indexOut >= 0) { //tokenOut is USD
-
-            tokenUSDs.splice(indexOut, 1)
-            for (let tokenUSD of tokenUSDs) {
-                //TOKEN -> USD
-                for (let fee0 of feeArr) {
-                    //USD -> USD
-                    routerPoolsArr.push([
-                        { tokenIn: tokenIn, tokenOut: tokenUSD, fee: fee0 },
-                        { tokenIn: tokenUSD, tokenOut: tokenOut, fee: FeeAmount.LOWEST }
-                    ])
-                }
-            }
-
-        } else if (indexIn >= 0 && indexOut == -1) { //tokenIn is USD
-
-            tokenUSDs.splice(indexIn, 1)
-            for (let tokenUSD of tokenUSDs) {
-                //USD -> USD
-                for (let fee1 of feeArr) {
-                    //USD -> TOKEN
-                    routerPoolsArr.push([
-                        { tokenIn: tokenIn, tokenOut: tokenUSD, fee: FeeAmount.LOWEST },
-                        { tokenIn: tokenUSD, tokenOut: tokenOut, fee: fee1 }
-                    ])
-                }
-            }
-
-        } else {
-            throw new Error('only one of tokenIn and tokenOut MUST be stable coin')
-        }
-
-        return routerPoolsArr
-    }
-
-
-    function getRoutersInfo_WETH(tokenIn, tokenOut) {
-        let routerPoolsArr = []
-
-        let feeArr = [FeeAmount.HIGH, FeeAmount.MEDIUM, FeeAmount.LOW, FeeAmount.LOWEST]
-        for (let fee0 of feeArr) {
-            //USDC -> WETH
-            for (let fee1 of feeArr) {
-                //WETH -> PEPE
-                routerPoolsArr.push([
-                    { tokenIn: tokenIn, tokenOut: WETH_TOKEN, fee: fee0 },
-                    { tokenIn: WETH_TOKEN, tokenOut: tokenOut, fee: fee1 }
-                ])
-            }
-        }
-        return routerPoolsArr
-    }
-
-
-    function getRoutersInfo(tokenIn, tokenOut) {
-        let routerPoolsArr = []
-
-        let feeArr = [FeeAmount.HIGH, FeeAmount.MEDIUM, FeeAmount.LOW, FeeAmount.LOWEST]
-        for (let fee of feeArr) {
-            routerPoolsArr.push([
-                { tokenIn, tokenOut, fee }
-            ])
-        }
-        return routerPoolsArr
-    }
-
-
-    function getCallDatasForAmountOut(amountIn, routerPoolsArr) {
-        let callDatas = []
-        for (let i = 0; i < routerPoolsArr.length; i++) {
-            let routerPools = routerPoolsArr[i]
-
-            let path = []
-            for (let i = 0; i < routerPools.length; i++) {
-                let pool = routerPools[i]
-                if (i == 0) {
-                    path.push(pool.tokenIn.isNative ? WETH_ADDRESS : pool.tokenIn.address)
-                }
-                path.push(utils.hexZeroPad(pool.fee, 3))
-                path.push(pool.tokenOut.isNative ? WETH_ADDRESS : pool.tokenOut.address)
-            }
-            path = utils.hexConcat(path)
-
-            let callData = QuoterV3.interface.encodeFunctionData('quoteExactInput(bytes,uint256)', [path, amountIn])
-            callDatas.push(callData)
-        }
-        return callDatas
-    }
-
-
-    function getCallDatasForAmountIn(routerPoolsArr, amountOut) {
-        let callDatas = []
-        for (let i = 0; i < routerPoolsArr.length; i++) {
-            let routerPools = routerPoolsArr[i]
-
-            let path = []
-            for (let i = routerPools.length - 1; i >= 0; i--) {
-                let pool = routerPools[i]
-                if (i == routerPools.length - 1) {
-                    path.push(pool.tokenOut.isNative ? WETH_ADDRESS : pool.tokenOut.address)
-                }
-                path.push(utils.hexZeroPad(pool.fee, 3))
-                path.push(pool.tokenIn.isNative ? WETH_ADDRESS : pool.tokenIn.address)
-            }
-            path = utils.hexConcat(path)
-
-            let callData = QuoterV3.interface.encodeFunctionData('quoteExactOutput(bytes,uint256)', [path, amountOut])
-            callDatas.push(callData)
-        }
-        return callDatas
-    }
-
-
-    async function getBestOfAmountOut(routerPoolsArr, amountIn) {
-        let callDatas = getCallDatasForAmountOut(amountIn, routerPoolsArr)
-        let amountOuts = await quoterV3.callStatic.aggregate(callDatas, 200000)
-        let best = getHighestAmountOut(routerPoolsArr, amountOuts)
-        return best
-    }
-
-
-    async function getBestOfAmountIn(routerPoolsArr, amountOut) {
-        let callDatas = getCallDatasForAmountIn(routerPoolsArr, amountOut)
-        let amountIns = await quoterV3.callStatic.aggregate(callDatas, 200000)
-        let best = getLowestAmountIn(routerPoolsArr, amountIns)
-        return best
-    }
-
-
-    function getHighestAmountOut(routerPoolsArr, amountOuts) {
-        let best = null
-        for (let i = 0; i < routerPoolsArr.length; i++) {
-            let routerPools = routerPoolsArr[i]
-            let amountOut = amountOuts[i]
-
-            let routerStr = 'amountOut:' + s(amountOut) + ' router:'
-            for (let pool of routerPools) {
-                routerStr += pool.tokenIn.symbol + '-' + pool.fee + '-' + pool.tokenOut.symbol + ' '
-            }
-
-            console.log(routerStr)
-            if (s(amountOut) == '0') continue
-
-            if (best) {
-                if (amountOut.gt(best.amountOut)) {
-                    best = { routerPools, amountOut, routerStr }
-                }
-            } else {
-                best = { routerPools, amountOut, routerStr }
-            }
-        }
-        if (best == null) {
-            best = { routerPools: [], amountOut: b(0), routerStr: 'No routers' }
-        }
-        return best
-    }
-
-
-    function getLowestAmountIn(routerPoolsArr, amountIns) {
-        let best = null
-        for (let i = 0; i < routerPoolsArr.length; i++) {
-            let routerPools = routerPoolsArr[i]
-            let amountIn = amountIns[i]
-
-            let routerStr = 'amountIn:' + s(amountIn) + ' router:'
-            for (let pool of routerPools) {
-                routerStr += pool.tokenIn.symbol + '-' + pool.fee + '-' + pool.tokenOut.symbol + ' '
-            }
-
-            console.log(routerStr)
-            if (s(amountIn) == '0') continue
-
-            if (best) {
-                if (amountIn.lt(best.amountIn)) {
-                    best = { routerPools, amountIn, routerStr }
-                }
-            } else {
-                best = { routerPools, amountIn, routerStr }
-            }
-        }
-        if (best == null) {
-            best = { routerPools: [], amountOut: b(0), routerStr: 'No routers' }
-        }
-        return best
-    }
-
-
     async function atomSign(signer, fromWallet, callArr) {
         let atomCallBytes = '0x'
         for (let i = 0; i < callArr.length; i++) {
             let to = callArr[i].to
             let value = callArr[i].value
             let data = callArr[i].data
-
             let len = utils.arrayify(data).length
             atomCallBytes = utils.hexConcat([atomCallBytes, to, utils.hexZeroPad(value, 32), utils.hexZeroPad(len, 32), data])
         }
-
         let deadline = parseInt(Date.now() / 1000) + 600;
         let chainId = (await provider.getNetwork()).chainId
         let SmartWallet = await ethers.getContractFactory('SmartWallet')
         let hasWallet = await factory.wallets(fromWallet)
         let valid = hasWallet ? await SmartWallet.attach(fromWallet).valid() : 1
-
         let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallBytes, deadline, '0x'])
         calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
-
         let hash = utils.keccak256(calldata)
         let signature = await signer.signMessage(utils.arrayify(hash))
-
         return { atomCallBytes, deadline, chainId, fromWallet, valid, signature }
     }
 
