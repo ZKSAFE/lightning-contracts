@@ -1,24 +1,20 @@
 const util = require('util')
-const { BigNumber, utils } = require('ethers')
+const { utils } = require('ethers')
 const { m, d, b, n, s } = require('./BigNumberHelp')
 const { ethers } = require('hardhat')
-const { computePoolAddress, FeeAmount, Pool, Route, SwapOptions, SwapQuoter, SwapRouter, Trade } = require('@uniswap/v3-sdk')
-const { SupportedChainId, Token, Ether, Currency, CurrencyAmount, Percent, TradeType } = require('@uniswap/sdk-core')
-const IUniswapV3PoolABI = require('@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json')
+const { FeeAmount } = require('@uniswap/v3-sdk')
+const { Token, Ether } = require('@uniswap/sdk-core')
 
-let ChainId, POOL_FACTORY_ADDRESS, SWAP_ROUTER_ADDRESS, WETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS
-let NATIVE_ETH, WETH_TOKEN, USDC_TOKEN, USDT_TOKEN, DAI_TOKEN
+const eachGaslimit = 300000
 
-const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
-const MAX_UINT256 = b('115792089237316195423570985008687907853269984665640564039457584007913129639935')
+let ChainId, WETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS
+let WETH_TOKEN, USDC_TOKEN, USDT_TOKEN, DAI_TOKEN
 
 let QuoterV3
 let quoterV3
 
 async function setup(addrsObj) {
     ChainId = addrsObj.ChainId
-    POOL_FACTORY_ADDRESS = addrsObj.POOL_FACTORY_ADDRESS
-    SWAP_ROUTER_ADDRESS = addrsObj.SWAP_ROUTER_ADDRESS
     WETH_ADDRESS = addrsObj.WETH_ADDRESS
     USDC_ADDRESS = addrsObj.USDC_ADDRESS
     USDT_ADDRESS = addrsObj.USDT_ADDRESS
@@ -32,7 +28,6 @@ async function setup(addrsObj) {
 
     QuoterV3 = await ethers.getContractFactory('QuoterV3')
     quoterV3 = QuoterV3.attach(addrsObj.QuoterV3Addr)
-        
 }
 
 
@@ -160,7 +155,7 @@ function getCallDatasForAmountIn(routerPoolsArr, amountOut) {
 
 async function getBestOfAmountOut(routerPoolsArr, amountIn) {
     let callDatas = getCallDatasForAmountOut(amountIn, routerPoolsArr)
-    let amountOuts = await quoterV3.callStatic.aggregate(callDatas, 200000)
+    let amountOuts = await quoterV3.callStatic.aggregate(callDatas, eachGaslimit)
     let best = getHighestAmountOut(routerPoolsArr, amountOuts)
     return best
 }
@@ -168,7 +163,7 @@ async function getBestOfAmountOut(routerPoolsArr, amountIn) {
 
 async function getBestOfAmountIn(routerPoolsArr, amountOut) {
     let callDatas = getCallDatasForAmountIn(routerPoolsArr, amountOut)
-    let amountIns = await quoterV3.callStatic.aggregate(callDatas, 200000)
+    let amountIns = await quoterV3.callStatic.aggregate(callDatas, eachGaslimit)
     let best = getLowestAmountIn(routerPoolsArr, amountIns)
     return best
 }

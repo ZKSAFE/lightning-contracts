@@ -85,8 +85,6 @@ describe('autoGas.test', function () {
 
         await QuoterV3Help.setup({
             ChainId,
-            POOL_FACTORY_ADDRESS,
-            SWAP_ROUTER_ADDRESS,
             WETH_ADDRESS,
             USDC_ADDRESS,
             USDT_ADDRESS,
