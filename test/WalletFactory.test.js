@@ -3,7 +3,7 @@ const { m, d, b, n, s } = require('./help/BigNumberHelp')
 
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-describe('SmartWallet-Bundler.test', function () {
+describe('WalletFactory.test', function () {
     let accounts
     let provider
     let bundler
@@ -54,7 +54,7 @@ describe('SmartWallet-Bundler.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([usdt.address, usdc.address, dai.address])
+        factory = await WalletFactory.deploy([dai.address, usdt.address, usdc.address], 1)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
     })
@@ -104,7 +104,7 @@ describe('SmartWallet-Bundler.test', function () {
 
         let atomSignParamsArr = []
 
-        //adminWallet: createWallet
+        //wallet0: createWallet
         let callArr = []
         let to = '0x'
         let value = 0
@@ -125,10 +125,10 @@ describe('SmartWallet-Bundler.test', function () {
         value = 0
         data = '0x'
 
-        to = usdt.address
+        to = usdc.address
         value = 0
         const ERC = await ethers.getContractFactory('MockERC20')
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1, 18)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(1, 6)])
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
@@ -167,7 +167,7 @@ describe('SmartWallet-Bundler.test', function () {
         let chainId = (await provider.getNetwork()).chainId
         let SmartWallet = await ethers.getContractFactory('SmartWallet')
         let hasWallet =  await factory.wallets(fromWallet)
-        let valid = hasWallet ? await SmartWallet.attach(fromWallet).valid() : 0
+        let valid = hasWallet ? await SmartWallet.attach(fromWallet).valid() : 1
 
         let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallbytes, deadline, '0x'])
         calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
