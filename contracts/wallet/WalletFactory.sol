@@ -10,23 +10,18 @@ contract WalletFactory {
 
     address[] public stableCoinArr;
 
-    uint public fee;
-
-    mapping(address => uint32) public nonceOf;
+    uint immutable public fee;
 
     mapping(address => bool) public wallets;
 
-    event WalletCreated(address wallet, address owner, address bundler, uint32 nonce);
+    event WalletCreated(address wallet, address owner, address bundler);
 
     constructor(address[] memory _stableCoinArr, uint _fee) {
         stableCoinArr = _stableCoinArr;
         fee = _fee;
     }
 
-    function createWallet(address owner, address bundler) public returns (address) {
-        uint32 nonce = nonceOf[owner];
-        nonce++;
-        bytes32 salt = keccak256(abi.encodePacked(owner, nonce));
+    function createWallet(bytes32 salt, address owner, address bundler) public returns (address) {
         SmartWallet wallet = new SmartWallet{salt: salt}();
 
         bool isInit;
@@ -41,15 +36,13 @@ contract WalletFactory {
         }
         require(isInit, "createWallet: need $fee in SmartWallet");
         
-        nonceOf[owner] = nonce;
         wallets[address(wallet)] = true;
-        emit WalletCreated(address(wallet), owner, bundler, nonce);
+        emit WalletCreated(address(wallet), owner, bundler);
 
         return address(wallet);
     }
 
-    function computeWalletAddr(address owner, uint32 nonce) public view returns (address) {
-        bytes32 salt = keccak256(abi.encodePacked(owner, nonce));
+    function computeWalletAddr(bytes32 salt) public view returns (address) {
         address predictedAddr = address(
             uint160(
                 uint(

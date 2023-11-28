@@ -1,5 +1,6 @@
 const { BigNumber, utils } = require('ethers')
 const { m, d, b, n, s } = require('./help/BigNumberHelp')
+const { v4: uuidv4, parse: uuidParse } = require('uuid')
 
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -59,12 +60,10 @@ describe('WalletFactory.test', function () {
         console.log('factory deployed:', factory.address)
     })
 
-
+    const uuid0 = uuidv4()
     let wallet0Addr
     it('computeWalletAddr && deposit', async function () {
-        let nonce = await factory.nonceOf(accounts[0].address)
-        nonce++
-        wallet0Addr = await factory.computeWalletAddr(accounts[0].address, nonce)
+        wallet0Addr = await factory.computeWalletAddr(uuidToBytes32(uuid0))
     
         await usdc.transfer(wallet0Addr, m(10, 6))
         console.log('deposit USDC to wallet0Addr', wallet0Addr)
@@ -74,7 +73,7 @@ describe('WalletFactory.test', function () {
 
 
     it('createWallet', async function () {
-        await factory.createWallet(accounts[0].address, bundler.address)
+        await factory.createWallet(uuidToBytes32(uuid0), accounts[0].address, bundler.address)
         
         let hasWallet =  await factory.wallets(wallet0Addr)
         console.log('wallet is created:', hasWallet)
@@ -82,12 +81,10 @@ describe('WalletFactory.test', function () {
         await print()
     })
 
-    
+    const uuid1 = uuidv4()
     let wallet1Addr
     it('computeWalletAddr && deposit', async function () {
-        let nonce = await factory.nonceOf(accounts[1].address)
-        nonce++
-        wallet1Addr = await factory.computeWalletAddr(accounts[1].address, nonce)
+        wallet1Addr = await factory.computeWalletAddr(uuidToBytes32(uuid1))
     
         await usdc.transfer(wallet1Addr, m(10, 6))
         console.log('deposit USDC to wallet1Addr', wallet1Addr)
@@ -112,8 +109,8 @@ describe('WalletFactory.test', function () {
 
         to = factory.address
         value = 0
-        data = WalletFactory.interface.encodeFunctionData('createWallet(address,address)',
-            [accounts[1].address, bundler.address])
+        data = WalletFactory.interface.encodeFunctionData('createWallet(bytes32,address,address)',
+            [uuidToBytes32(uuid1), accounts[1].address, bundler.address])
         callArr.push({ to, value, data })
 
         let atomSignParams = await atomSign(accounts[0], wallet0Addr, callArr)
@@ -176,6 +173,11 @@ describe('WalletFactory.test', function () {
         let signature = await signer.signMessage(utils.arrayify(hash))
 
         return { atomCallbytes, deadline, chainId, fromWallet, valid, signature }
+    }
+
+
+    function uuidToBytes32(uuid) {
+        return utils.hexZeroPad(uuidParse(uuid), 32)
     }
 
 
