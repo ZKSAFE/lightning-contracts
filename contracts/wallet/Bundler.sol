@@ -112,78 +112,10 @@ contract Bundler is IUniswapV3FlashCallback {
     }
 
 
-    function bundlerCallback2(
+    function bundlerAtomCallback(
         bytes calldata atomCallBytes
     ) external {
         require(msg.sender == _callTo, "bundlerCallback: Only _callTo");
-
-        _doAtomCall(atomCallBytes);
-    }
-
-
-    ///////////////////////////
-    ////  executeSandwich  ////
-    ///////////////////////////
-
-    function executeSandwich(
-        Call[] calldata sandwichCalls,
-        address wallet,
-        bytes calldata data
-    ) public onlyBundlerManager {
-        for (uint i = 0; i < sandwichCalls.length; i++) {
-            _sandwichCalls.push(sandwichCalls[i]);
-        }
-        executeOperation(wallet, data);
-    }
-
-
-    function sandwichCallback() external {
-        require(msg.sender == _callTo, "sandwichCallback: Only _callTo");
-
-        for (uint i = 0; i < _sandwichCalls.length; i++) {
-            Call storage call =  _sandwichCalls[i];
-            (bool success, bytes memory result) = call.to.call{value: call.value}(
-                call.data
-            );
-            if (!success) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
-            }
-        }
-
-        delete _sandwichCalls;
-    }
-
-
-    /////////////////////
-    ////  flashloan  ////
-    /////////////////////
-
-    function executeFlash(
-        address pool,
-        uint borrowAmount0,
-        uint borrowAmount1,
-        bytes calldata atomCallBytes
-    ) external onlyBundlerManager {
-        _callTo = pool;
-        // recipient of borrowed amounts
-        // amount of token0 requested to borrow
-        // amount of token1 requested to borrow
-        // need amount 0 and amount1 in callback to pay back pool
-        // recipient of flash should be THIS contract
-        IUniswapV3Pool(pool).flash(original, borrowAmount0, borrowAmount1, atomCallBytes);
-
-        _callTo = address(0);
-    }
-
-
-    function uniswapV3FlashCallback(
-        uint,
-        uint,
-        bytes calldata atomCallBytes
-    ) external override {
-        require(msg.sender == _callTo, "uniswapV3FlashCallback: Only _callTo");
 
         _doAtomCall(atomCallBytes);
     }
@@ -207,5 +139,35 @@ contract Bundler is IUniswapV3FlashCallback {
 
             i += 84 + len;
         }
+    }
+
+
+    /////////////////////
+    ////  flashloan  ////
+    /////////////////////
+    function executeFlash(
+        address pool,
+        uint borrowAmount0,
+        uint borrowAmount1,
+        bytes calldata atomCallBytes
+    ) external onlyBundlerManager {
+        _callTo = pool;
+        // recipient of borrowed amounts
+        // amount of token0 requested to borrow
+        // amount of token1 requested to borrow
+        // need amount 0 and amount1 in callback to pay back pool
+        // recipient of flash should be THIS contract
+        IUniswapV3Pool(pool).flash(original, borrowAmount0, borrowAmount1, atomCallBytes);
+        _callTo = address(0);
+    }
+
+
+    function uniswapV3FlashCallback(
+        uint,
+        uint,
+        bytes calldata atomCallBytes
+    ) external override {
+        require(msg.sender == _callTo, "uniswapV3FlashCallback: Only _callTo");
+        _doAtomCall(atomCallBytes);
     }
 }

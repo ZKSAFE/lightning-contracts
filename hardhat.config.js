@@ -20,6 +20,7 @@ module.exports = {
 			chainId: 5,
 			accounts: [
 				process.env.V2_TEST_2_PK,
+				process.env.ETH_PK_0,
 			]
 		},
 		polygon: {
@@ -42,6 +43,7 @@ module.exports = {
 			url: 'https://mainnet.optimism.io/',
 			chainId: 10,
 			accounts: [
+				process.env.V2_TEST_2_PK,
 				process.env.ETH_PK_0,
 				process.env.ZKSAFE_Deployer_PK,
 			]

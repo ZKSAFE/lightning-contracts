@@ -2,17 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "hardhat/console.sol";
 
-contract LightningWallet is ReentrancyGuard{
+contract SmartWalletV2 {
     using ECDSA for bytes32;
 
-    event BundlerChanged(
-        address indexed previousBundler,
-        address indexed newBundler
-    );
+    event BundlerChanged(address indexed previousBundler, address indexed newBundler);
 
     bool internal isInit;
 
@@ -134,5 +129,4 @@ contract LightningWallet is ReentrancyGuard{
     function makeAtomSignInvalid() public onlyOwnerAndOriginal {
         valid = uint32(uint(blockhash(block.number)));
     }
-
 }

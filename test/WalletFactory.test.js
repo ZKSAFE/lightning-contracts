@@ -1,6 +1,6 @@
 const { BigNumber, utils } = require('ethers')
 const { m, d, b, n, s } = require('./help/BigNumberHelp')
-const { v4: uuidv4, parse: uuidParse } = require('uuid')
+const { ObjectId } = require('bson')
 
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -60,7 +60,7 @@ describe('WalletFactory.test', function () {
         console.log('factory deployed:', factory.address)
     })
 
-    const uuid0 = uuidv4()
+    const uuid0 = new ObjectId()
     let wallet0Addr
     it('computeWalletAddr && deposit', async function () {
         wallet0Addr = await factory.computeWalletAddr(uuidToBytes32(uuid0))
@@ -73,15 +73,16 @@ describe('WalletFactory.test', function () {
 
 
     it('createWallet', async function () {
-        await factory.createWallet(uuidToBytes32(uuid0), accounts[0].address, bundler.address)
-        
+        let tx = await (await factory.createWallet(uuidToBytes32(uuid0), accounts[0].address, bundler.address)).wait()
+        console.log('createWallet gas used:', tx.cumulativeGasUsed, 'gas price:', tx.effectiveGasPrice)
+
         let hasWallet =  await factory.wallets(wallet0Addr)
         console.log('wallet is created:', hasWallet)
 
         await print()
     })
 
-    const uuid1 = uuidv4()
+    const uuid1 = new ObjectId()
     let wallet1Addr
     it('computeWalletAddr && deposit', async function () {
         wallet1Addr = await factory.computeWalletAddr(uuidToBytes32(uuid1))
@@ -168,16 +169,15 @@ describe('WalletFactory.test', function () {
 
         let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallbytes, deadline, '0x'])
         calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
-
         let hash = utils.keccak256(calldata)
         let signature = await signer.signMessage(utils.arrayify(hash))
-
+        
         return { atomCallbytes, deadline, chainId, fromWallet, valid, signature }
     }
 
 
     function uuidToBytes32(uuid) {
-        return utils.hexZeroPad(uuidParse(uuid), 32)
+        return utils.hexZeroPad('0x' + uuid.toString(), 32)
     }
 
 

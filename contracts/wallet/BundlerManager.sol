@@ -14,11 +14,13 @@ contract BundlerManager is SocialRecovery {
         bundler = address(new Bundler());
     }
 
-    function bundle(bytes[] calldata dataArr) public onlyOwner {
+    function bundle(bytes[] calldata dataArr) public onlyOwner returns(uint8 doneCount) {
         for (uint8 i = 0; i < dataArr.length; i++) {
             (bool success, ) = bundler.call{value: 0}(dataArr[i]);
             if (!success) {
                 emit Error(i);
+            } else {
+                doneCount++;
             }
         }
     }

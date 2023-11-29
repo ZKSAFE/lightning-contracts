@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./SmartWallet.sol";
+// import "./SmartWallet.sol";
+import "../innovation/SmartWalletV2.sol";
 import "hardhat/console.sol";
 
 contract WalletFactory {
@@ -22,7 +23,7 @@ contract WalletFactory {
     }
 
     function createWallet(bytes32 salt, address owner, address bundler) public returns (address) {
-        SmartWallet wallet = new SmartWallet{salt: salt}();
+        SmartWalletV2 wallet = new SmartWalletV2{salt: salt}();
 
         bool isInit;
         for (uint i = 0; i < stableCoinArr.length; i++) {
@@ -51,7 +52,7 @@ contract WalletFactory {
                             bytes1(0xff),
                             address(this),
                             salt,
-                            keccak256(type(SmartWallet).creationCode)
+                            keccak256(type(SmartWalletV2).creationCode)
                         )
                     )
                 )
