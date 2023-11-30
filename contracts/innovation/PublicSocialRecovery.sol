@@ -36,8 +36,8 @@ contract PublicSocialRecovery {
             msg.sender,
             guardians,
             needGuardiansNum,
-            new address[](needGuardiansNum),
-            new address[](guardians.length - needGuardiansNum + 1),
+            new address[](0),
+            new address[](0),
             bytes32(0)
         );
     }
@@ -61,76 +61,33 @@ contract PublicSocialRecovery {
         require(isGuardian, "propose: you're not the Guardian");
 
         if (group.proposal == proposal) {
-
-            uint8 insertIndex = 0;
-            bool insertIndexOnce;
-            for (uint8 i = 0; i < group.approvedGuardians.length; ++i) {
-                if (!insertIndexOnce && group.approvedGuardians[i] == address(0)) {
-                    insertIndex = i;
-                    insertIndexOnce = true;
-                }
-                require(
-                    group.approvedGuardians[i] != msg.sender,
-                    "propose: don't repeat"
-                );
-            }
-
-            if (insertIndex == group.needGuardiansNum - 1) {
+            if (group.approvedGuardians.length == group.needGuardiansNum - 1) {
                 //adopt!
                 adoptProposal(group, proposal);
                 proposalDone(group);
             } else {
                 //add approve
-                group.approvedGuardians[insertIndex] = msg.sender;
+                group.approvedGuardians.push(msg.sender);
             }
-
         } else {
-
             if (group.needGuardiansNum == 1) {
                 //adopt!
                 adoptProposal(group, proposal);
             } else {
                 if (group.proposal == bytes32(0)) {
                     //new proposal
-                    group.approvedGuardians[0] = msg.sender;
+                    group.approvedGuardians.push(msg.sender);
                     group.proposal = proposal;
                 } else {
-                    uint8 insertIndex = 0;
-                    bool insertIndexOnce;
-                    for (uint8 i = 0; i < group.rejectedGuardians.length; ++i) {
-                        if (!insertIndexOnce && group.rejectedGuardians[i] == address(0)) {
-                            insertIndex = i;
-                            insertIndexOnce = true;
-                        }
-                        require(
-                            group.rejectedGuardians[i] != msg.sender,
-                            "propose: don't repeat"
-                        );
-                    }
-
-                    if (insertIndex == group.guardians.length - group.needGuardiansNum - 1) {
+                    if (group.rejectedGuardians.length == group.guardians.length - group.needGuardiansNum - 1) {
                         //reject proposal
                         proposalDone(group);
                     } else {
                         //add reject
-                        group.rejectedGuardians[insertIndex] = msg.sender;
+                        group.rejectedGuardians.push(msg.sender);
                     }
                 }
             }
-        }
-    }
-
-    function findIndexForElement(address[] storage arr, address element) internal view returns(uint8 insertIndex) {
-        bool insertIndexOnce;
-        for (uint8 i = 0; i < group.rejectedGuardians.length; ++i) {
-            if (!insertIndexOnce && group.rejectedGuardians[i] == address(0)) {
-                insertIndex = i;
-                insertIndexOnce = true;
-            }
-            require(
-                group.rejectedGuardians[i] != msg.sender,
-                "propose: don't repeat"
-            );
         }
     }
 
@@ -165,7 +122,10 @@ contract PublicSocialRecovery {
         Group storage group,
         address removedGuardian
     ) internal {
-        require (group.guardians.length > 1, "removeGuardian: guardians.length must > 1");
+        require(
+            group.guardians.length > 1,
+            "removeGuardian: guardians.length must > 1"
+        );
 
         uint8 i;
         for (i = 0; i < group.guardians.length; ++i) {
@@ -195,8 +155,12 @@ contract PublicSocialRecovery {
     }
 
     function proposalDone(Group storage group) internal {
-        group.approvedGuardians = new address[](group.needGuardiansNum); //clean
-        group.rejectedGuardians = new address[](group.guardians.length - group.needGuardiansNum + 1); //clean
+        if (group.approvedGuardians.length > 0) {
+            group.approvedGuardians = new address[](0);
+        }
+        if (group.rejectedGuardians.length > 0) {
+            group.rejectedGuardians = new address[](0);
+        }
         group.proposal = bytes32(0);
     }
 }
