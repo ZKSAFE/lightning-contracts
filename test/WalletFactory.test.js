@@ -99,6 +99,7 @@ describe('WalletFactory.test', function () {
         const Bundler = await ethers.getContractFactory('Bundler')
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
+        const ERC = await ethers.getContractFactory('MockERC20')
 
         let atomSignParamsArr = []
 
@@ -125,8 +126,21 @@ describe('WalletFactory.test', function () {
 
         to = usdc.address
         value = 0
-        const ERC = await ethers.getContractFactory('MockERC20')
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(1, 6)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(100, 6)])
+        callArr.push({ to, value, data })
+
+        atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
+        atomSignParamsArr.push(atomSignParams)
+
+        //wallet1: transfer
+        callArr = []
+        to = '0x'
+        value = 0
+        data = '0x'
+
+        to = usdc.address
+        value = 0
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(100, 6)])
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
@@ -142,10 +156,18 @@ describe('WalletFactory.test', function () {
             bundleDataArr.push(bundleData)
         }
 
-        let estimateGas = await bundlerManager.estimateGas.bundle(bundleDataArr)
-        await bundlerManager.bundle(bundleDataArr)
-        console.log('bundle done gasCost:', estimateGas)
-
+        let tx = await bundlerManager.bundle(bundleDataArr)
+        let tx2 = await tx.wait()
+        console.log('bundle done', tx)
+        console.log('bundle done2', tx2)
+        for (let event of tx2.events) {
+            if (event.address == bundlerManager.address) {
+                if (event.eventSignature == 'Error(uint8)') {
+                    console.log('Error index:', b(event.data))
+                }
+            }
+        }
+        
         await print()
     })
 
@@ -161,7 +183,7 @@ describe('WalletFactory.test', function () {
             atomCallbytes = utils.hexConcat([atomCallbytes, to, utils.hexZeroPad(value, 32), utils.hexZeroPad(len, 32), data])
         }
 
-        let deadline = parseInt(Date.now() / 1000) + 600;
+        let deadline = parseInt(Date.now() / 1000 + Math.random() * 1000);
         let chainId = (await provider.getNetwork()).chainId
         let SmartWallet = await ethers.getContractFactory('SmartWallet')
         let hasWallet =  await factory.wallets(fromWallet)
