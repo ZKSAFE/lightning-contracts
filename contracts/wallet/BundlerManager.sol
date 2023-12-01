@@ -1,16 +1,42 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "./SocialRecovery.sol";
 import "./Bundler.sol";
 
-contract BundlerManager is SocialRecovery {
+interface IPublicSocialRecovery {
+    function setGroup(
+        address[] calldata guardians,
+        uint8 needGuardiansNum
+    ) external;
+}
 
+contract BundlerManager {
+
+    address public owner;
     address public bundler;
+    address public publicSocialRecovery;
 
+    event OwnerChanged(address oldOwner, address newOwner);
     event Error(uint8 i);
 
-    constructor() SocialRecovery(msg.sender) {
+    modifier onlyOwner() {
+        require(
+            owner == msg.sender,
+            "onlyOwner: caller is not the owner"
+        );
+        _;
+    }
+
+    modifier onlyPublicSocialRecovery() {
+        require(
+            publicSocialRecovery == msg.sender,
+            "onlyOriginal: caller is not the original"
+        );
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
         bundler = address(new Bundler());
     }
 
@@ -23,5 +49,40 @@ contract BundlerManager is SocialRecovery {
                 doneCount++;
             }
         }
+    }
+
+    ////////////////////////////
+    ////   SocialRecovery   ////
+    ////////////////////////////
+
+    function initSocialRecovery(
+        address _publicSocialRecovery,
+        address[] calldata guardians,
+        uint8 needGuardiansNum
+    ) external onlyOwner {
+        require(publicSocialRecovery == address(0), "initSocialRecovery: already exist");
+
+        publicSocialRecovery = _publicSocialRecovery;
+        IPublicSocialRecovery(publicSocialRecovery).setGroup(
+            guardians,
+            needGuardiansNum
+        );
+    }
+
+    function adoptProposal(bytes32 proposal) external onlyPublicSocialRecovery {
+        if (uint96(bytes12(proposal)) == 4) {
+            _doChangeOwner(address(uint160(uint(proposal))));
+        } else {
+            revert("adoptProposal: unsupported");
+        }
+    }
+
+    function changeOwner(address newOwner) external onlyOwner {
+        _doChangeOwner(newOwner);
+    }
+
+    function _doChangeOwner(address newOwner) internal {
+        emit OwnerChanged(owner, newOwner);
+        owner = newOwner;
     }
 }

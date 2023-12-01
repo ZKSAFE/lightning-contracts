@@ -1,6 +1,6 @@
-const { BigNumber, utils } = require('ethers')
-const { m, d, b, n, s } = require('./help/BigNumberHelp')
 const { ObjectId } = require('bson')
+const { m, d, b, n, s } = require('./help/BigNumberHelp')
+const { atomSign, uuidToBytes32 } = require('./help/AtomSignHelp')
 
 const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -126,7 +126,7 @@ describe('WalletFactory.test', function () {
 
         to = usdc.address
         value = 0
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(100, 6)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(1, 6)])
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
@@ -140,7 +140,7 @@ describe('WalletFactory.test', function () {
 
         to = usdc.address
         value = 0
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(100, 6)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(1, 6)])
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
@@ -158,8 +158,8 @@ describe('WalletFactory.test', function () {
 
         let tx = await bundlerManager.bundle(bundleDataArr)
         let tx2 = await tx.wait()
-        console.log('bundle done', tx)
-        console.log('bundle done2', tx2)
+        // console.log('bundle done', tx)
+        // console.log('bundle done2', tx2)
         for (let event of tx2.events) {
             if (event.address == bundlerManager.address) {
                 if (event.eventSignature == 'Error(uint8)') {
@@ -170,37 +170,6 @@ describe('WalletFactory.test', function () {
         
         await print()
     })
-
-
-    async function atomSign(signer, fromWallet, callArr) {
-        let atomCallbytes = '0x'
-        for (let i=0; i<callArr.length; i++) {
-            let to = callArr[i].to
-            let value = callArr[i].value
-            let data = callArr[i].data
-            
-            let len = utils.arrayify(data).length
-            atomCallbytes = utils.hexConcat([atomCallbytes, to, utils.hexZeroPad(value, 32), utils.hexZeroPad(len, 32), data])
-        }
-
-        let deadline = parseInt(Date.now() / 1000 + Math.random() * 1000);
-        let chainId = (await provider.getNetwork()).chainId
-        let SmartWallet = await ethers.getContractFactory('SmartWallet')
-        let hasWallet =  await factory.wallets(fromWallet)
-        let valid = hasWallet ? await SmartWallet.attach(fromWallet).valid() : 1
-
-        let calldata = SmartWallet.interface.encodeFunctionData('atomSignCall', [atomCallbytes, deadline, '0x'])
-        calldata = utils.hexConcat([calldata, utils.hexZeroPad(chainId, 31), fromWallet, utils.hexZeroPad(valid, 4)])
-        let hash = utils.keccak256(calldata)
-        let signature = await signer.signMessage(utils.arrayify(hash))
-        
-        return { atomCallbytes, deadline, chainId, fromWallet, valid, signature }
-    }
-
-
-    function uuidToBytes32(uuid) {
-        return utils.hexZeroPad('0x' + uuid.toString(), 32)
-    }
 
 
     async function print() {

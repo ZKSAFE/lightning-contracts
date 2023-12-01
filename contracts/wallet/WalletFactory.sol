@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import "./SmartWallet.sol"; //createWallet gas used: 2185288
-import "../innovation/SmartWalletV2.sol"; //createWallet gas used: 1114417
+import "./SmartWalletV2.sol"; //createWallet gas used: 1431023
 import "hardhat/console.sol";
 
 contract WalletFactory {
@@ -26,13 +26,19 @@ contract WalletFactory {
         SmartWalletV2 wallet = new SmartWalletV2{salt: salt}();
 
         bool isInit;
-        for (uint i = 0; i < stableCoinArr.length; i++) {
-            address stableCoinAddr = stableCoinArr[i];
-            uint feeAmount = fee * 10 ** uint(IERC20Metadata(stableCoinAddr).decimals());
-            if (IERC20(stableCoinAddr).balanceOf(address(wallet)) >= feeAmount) {
-                wallet.init(owner, bundler, stableCoinAddr, 0, abi.encodeCall(IERC20.transfer, (bundler, feeAmount)));
-                isInit = true;
-                break;
+        if (stableCoinArr.length == 0) {
+            wallet.init(owner, bundler, address(0), 0, bytes(""));
+            isInit = true;
+
+        } else {
+            for (uint i = 0; i < stableCoinArr.length; i++) {
+                address stableCoinAddr = stableCoinArr[i];
+                uint feeAmount = fee * 10 ** uint(IERC20Metadata(stableCoinAddr).decimals());
+                if (IERC20(stableCoinAddr).balanceOf(address(wallet)) >= feeAmount) {
+                    wallet.init(owner, bundler, stableCoinAddr, 0, abi.encodeCall(IERC20.transfer, (bundler, feeAmount)));
+                    isInit = true;
+                    break;
+                }
             }
         }
         require(isInit, "createWallet: need $fee in SmartWallet");
@@ -61,5 +67,4 @@ contract WalletFactory {
 
         return predictedAddr;
     }
-
 }

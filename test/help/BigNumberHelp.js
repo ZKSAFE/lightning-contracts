@@ -23,3 +23,9 @@ exports.n = function(bn) {
 exports.s = function(bn) {
     return bn.toString()
 }
+
+exports.delay =async function delay(sec) {
+    return new Promise((resolve, reject) => {
+        setTimeout(resolve, sec * 1000);
+    })
+}
