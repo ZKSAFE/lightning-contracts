@@ -7,14 +7,14 @@ interface ISmartWallet {
 
 contract PublicSocialRecovery {
 
-    event NewProposal(address indexed smartWallet, address proposer, bytes32 proposal, uint time);
-    event AddApprove(address indexed smartWallet, address approver, bytes32 proposal, uint time);
-    event AddReject(address indexed smartWallet, address rejecter, bytes32 proposal, uint time);
-    event AdoptProposal(address indexed smartWallet, address executor, bytes32 proposal, uint time);
-    event RejectProposal(address indexed smartWallet, address executor, bytes32 proposal, uint time);
-    event AddGuardian(address indexed smartWallet, address guardian, bytes32 proposal, uint time);
-    event RemoveGuardian(address indexed smartWallet, address guardian, bytes32 proposal, uint time);
-    event UpdateNeedGuardiansNum(address indexed smartWallet, uint8 num, bytes32 proposal, uint time);
+    event NewProposal(address indexed smartWallet, address proposer, bytes32 proposal);
+    event AddApprove(address indexed smartWallet, address approver, bytes32 proposal);
+    event AddReject(address indexed smartWallet, address rejecter, bytes32 proposal);
+    event AdoptProposal(address indexed smartWallet, address executor, bytes32 proposal);
+    event RejectProposal(address indexed smartWallet, address executor, bytes32 proposal);
+    event AddGuardian(address indexed smartWallet, address guardian, bytes32 proposal);
+    event RemoveGuardian(address indexed smartWallet, address guardian, bytes32 proposal);
+    event UpdateNeedGuardiansNum(address indexed smartWallet, uint8 num, bytes32 proposal);
 
     struct Group {
         address smartWallet;
@@ -89,18 +89,18 @@ contract PublicSocialRecovery {
             //new proposal & adopt!
             group.proposal = proposal;
             adoptProposal(group);
-            emit NewProposal(smartWallet, msg.sender, proposal, block.timestamp);
+            emit NewProposal(smartWallet, msg.sender, proposal);
             
         } else if (group.proposal == bytes32(0) && proposal != bytes32(0)) {
             //new proposal
             group.approvedGuardians.push(msg.sender);
             group.proposal = proposal;
-            emit NewProposal(smartWallet, msg.sender, proposal, block.timestamp);
+            emit NewProposal(smartWallet, msg.sender, proposal);
 
         } else if (group.proposal == proposal && group.approvedGuardians.length + 1 < group.needGuardiansNum) {
             //add approve
             group.approvedGuardians.push(msg.sender);
-            emit AddApprove(smartWallet, msg.sender, proposal, block.timestamp);
+            emit AddApprove(smartWallet, msg.sender, proposal);
 
 
         } else if (group.proposal == proposal && group.approvedGuardians.length + 1 >= group.needGuardiansNum) {
@@ -110,12 +110,12 @@ contract PublicSocialRecovery {
         } else if (group.proposal != proposal && group.rejectedGuardians.length + 1 <= group.guardians.length - group.needGuardiansNum) {
             //add reject
             group.rejectedGuardians.push(msg.sender);
-            emit AddReject(smartWallet, msg.sender, proposal, block.timestamp);
+            emit AddReject(smartWallet, msg.sender, proposal);
 
         } else if (group.proposal != proposal && group.rejectedGuardians.length + 1 > group.guardians.length - group.needGuardiansNum) {
             //reject proposal
             cleanProposal(group);
-            emit RejectProposal(smartWallet, msg.sender, proposal, block.timestamp);
+            emit RejectProposal(smartWallet, msg.sender, proposal);
 
         } else {
             revert("propose: something wrong");
@@ -129,21 +129,21 @@ contract PublicSocialRecovery {
         if (uint96(bytes12(proposal)) == 1) {
             addGuardian(group, address(uint160(uint(proposal))));
             cleanProposal(group);
-            emit AddGuardian(group.smartWallet, address(uint160(uint(proposal))), proposal, block.timestamp);
+            emit AddGuardian(group.smartWallet, address(uint160(uint(proposal))), proposal);
 
         } else if (uint96(bytes12(proposal)) == 2) {
             removeGuardian(group, address(uint160(uint(proposal))));
             cleanProposal(group);
-            emit RemoveGuardian(group.smartWallet, address(uint160(uint(proposal))), proposal, block.timestamp);
+            emit RemoveGuardian(group.smartWallet, address(uint160(uint(proposal))), proposal);
 
         } else if (uint96(bytes12(proposal)) == 3) {
             updateNeedGuardiansNum(group, uint8(uint(proposal)));
             cleanProposal(group);
-            emit UpdateNeedGuardiansNum(group.smartWallet, uint8(uint(proposal)), proposal, block.timestamp);
+            emit UpdateNeedGuardiansNum(group.smartWallet, uint8(uint(proposal)), proposal);
 
         } else {
             ISmartWallet(group.smartWallet).adoptProposal(proposal);
-            emit AdoptProposal(group.smartWallet, msg.sender, proposal, block.timestamp);
+            emit AdoptProposal(group.smartWallet, msg.sender, proposal);
         }
     }
 

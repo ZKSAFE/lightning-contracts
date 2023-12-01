@@ -14,6 +14,10 @@ interface IPublicSocialRecovery {
 contract SmartWalletV2 {
     using ECDSA for bytes32;
 
+    event OwnerChanged(address oldOwner, address newOwner);
+    event PendingBundler(address oldBundler, address pendingBundler);
+    event BundlerReset(address oldBundler, address newBundler);
+
     bool internal isInit;
 
     uint32 public valid = 1; //to make AtomSign invalid
@@ -21,7 +25,10 @@ contract SmartWalletV2 {
     address private immutable original;
     address public owner;
     address public bundler;
-    address public publicSocialRecoveryAddr;
+    address public pendingBundler; //change bundler needs pending
+    address public publicSocialRecovery;
+
+    uint public pendingBundlerStartTime;
 
     mapping(bytes32 => bool) public usedMsgHashes;
 
@@ -33,16 +40,19 @@ contract SmartWalletV2 {
         _;
     }
 
+    modifier onlyPendingBundler() {
+        require(
+            pendingBundler == msg.sender,
+            "onlyPendingBundler: caller is not the pendingBundler"
+        );
+        _;
+    }
+
     modifier onlyOwnerAndOriginal() {
         require(
             owner == msg.sender || original == msg.sender,
             "onlyOwnerAndOriginal: caller is not the owner"
         );
-        _;
-    }
-
-    modifier onlyOwner() {
-        require(owner == msg.sender, "onlyOwner: caller is not the owner");
         _;
     }
 
@@ -56,8 +66,8 @@ contract SmartWalletV2 {
 
     modifier onlyPublicSocialRecovery() {
         require(
-            publicSocialRecoveryAddr == msg.sender,
-            "onlyOriginal: caller is not the original"
+            publicSocialRecovery == msg.sender,
+            "onlyPublicSocialRecovery: caller is not the onlyPublicSocialRecovery"
         );
         _;
     }
@@ -96,7 +106,7 @@ contract SmartWalletV2 {
      */
     function atomCall(
         bytes calldata atomCallBytes
-    ) public onlyOwner onlyBundler {
+    ) public onlyOwnerAndOriginal onlyBundler {
         _doAtomCall(atomCallBytes);
     }
 
@@ -156,19 +166,32 @@ contract SmartWalletV2 {
         valid = uint32(uint(blockhash(block.number)));
     }
 
+    /**
+     * Supported delegatecall, call within atomCall & atomSignCall
+     */
+    function delegateCall(address to, bytes calldata data) public onlyOriginal {
+        (bool success, bytes memory result) = to.delegatecall(data);
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
+    }
+
+
     ////////////////////////////
     ////   SocialRecovery   ////
     ////////////////////////////
 
     function initSocialRecovery(
-        address _publicSocialRecoveryAddr,
+        address _publicSocialRecovery,
         address[] calldata guardians,
         uint8 needGuardiansNum
     ) external onlyOwnerAndOriginal {
-        require(publicSocialRecoveryAddr == address(0), "initSocialRecovery: already exist");
+        require(publicSocialRecovery == address(0), "initSocialRecovery: already exist");
 
-        publicSocialRecoveryAddr = _publicSocialRecoveryAddr;
-        IPublicSocialRecovery(publicSocialRecoveryAddr).setGroup(
+        publicSocialRecovery = _publicSocialRecovery;
+        IPublicSocialRecovery(publicSocialRecovery).setGroup(
             guardians,
             needGuardiansNum
         );
@@ -176,11 +199,40 @@ contract SmartWalletV2 {
 
     function adoptProposal(bytes32 proposal) external onlyPublicSocialRecovery {
         if (uint96(bytes12(proposal)) == 4) {
-            owner = address(uint160(uint(proposal)));
-        } else if (uint96(bytes12(proposal)) == 5) {
-            bundler = address(uint160(uint(proposal)));
+            _doChangeOwner(address(uint160(uint(proposal))));
         } else {
-            revert("adoptProposal: fail");
+            revert("adoptProposal: unsupported");
         }
+    }
+
+    function changeOwner(address newOwner) external onlyOwnerAndOriginal {
+        _doChangeOwner(newOwner);
+    }
+
+    function _doChangeOwner(address newOwner) internal {
+        emit OwnerChanged(owner, newOwner);
+        owner = newOwner;
+    }
+
+    function changeBundler(address newBundler) external onlyOwnerAndOriginal {
+        makeAtomSignInvalid();
+        pendingBundler = newBundler;
+        if (newBundler == address(0)) {
+            pendingBundlerStartTime = 0;
+            emit BundlerReset(bundler, bundler);
+        } else {
+            pendingBundlerStartTime = block.timestamp;
+            emit PendingBundler(bundler, pendingBundler);
+        }
+    }
+
+    function resetBundler() external onlyPendingBundler {
+        // require(block.timestamp > pendingBundlerStartTime + 3600 * 24 * 3, "resetBundler: needs 3 days pending");
+        require(block.timestamp > pendingBundlerStartTime + 3, "resetBundler: needs 3 secs pending");
+        
+        bundler = pendingBundler;
+        pendingBundler = address(0);
+        pendingBundlerStartTime = 0;
+        emit BundlerReset(bundler, pendingBundler);
     }
 }
