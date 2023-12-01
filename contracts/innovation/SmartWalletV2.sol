@@ -4,10 +4,15 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "hardhat/console.sol";
 
+interface IPublicSocialRecovery {
+    function setGroup(
+        address[] calldata guardians,
+        uint8 needGuardiansNum
+    ) external;
+}
+
 contract SmartWalletV2 {
     using ECDSA for bytes32;
-
-    event BundlerChanged(address indexed previousBundler, address indexed newBundler);
 
     bool internal isInit;
 
@@ -16,6 +21,7 @@ contract SmartWalletV2 {
     address private immutable original;
     address public owner;
     address public bundler;
+    address public publicSocialRecoveryAddr;
 
     mapping(bytes32 => bool) public usedMsgHashes;
 
@@ -28,7 +34,10 @@ contract SmartWalletV2 {
     }
 
     modifier onlyOwnerAndOriginal() {
-        require(owner == msg.sender || original == msg.sender, "onlyOwnerAndOriginal: caller is not the owner");
+        require(
+            owner == msg.sender || original == msg.sender,
+            "onlyOwnerAndOriginal: caller is not the owner"
+        );
         _;
     }
 
@@ -38,7 +47,18 @@ contract SmartWalletV2 {
     }
 
     modifier onlyOriginal() {
-        require(original == msg.sender, "onlyOriginal: caller is not the original");
+        require(
+            original == msg.sender,
+            "onlyOriginal: caller is not the original"
+        );
+        _;
+    }
+
+    modifier onlyPublicSocialRecovery() {
+        require(
+            publicSocialRecoveryAddr == msg.sender,
+            "onlyOriginal: caller is not the original"
+        );
         _;
     }
 
@@ -48,7 +68,13 @@ contract SmartWalletV2 {
 
     receive() external payable {}
 
-    function init(address _owner, address _bundler, address to, uint value, bytes calldata data) public {
+    function init(
+        address _owner,
+        address _bundler,
+        address to,
+        uint value,
+        bytes calldata data
+    ) public {
         require(!isInit, "init() runs only once");
         isInit = true;
 
@@ -128,5 +154,33 @@ contract SmartWalletV2 {
      */
     function makeAtomSignInvalid() public onlyOwnerAndOriginal {
         valid = uint32(uint(blockhash(block.number)));
+    }
+
+    ////////////////////////////
+    ////   SocialRecovery   ////
+    ////////////////////////////
+
+    function initSocialRecovery(
+        address _publicSocialRecoveryAddr,
+        address[] calldata guardians,
+        uint8 needGuardiansNum
+    ) external onlyOwnerAndOriginal {
+        require(publicSocialRecoveryAddr == address(0), "initSocialRecovery: already exist");
+
+        publicSocialRecoveryAddr = _publicSocialRecoveryAddr;
+        IPublicSocialRecovery(publicSocialRecoveryAddr).setGroup(
+            guardians,
+            needGuardiansNum
+        );
+    }
+
+    function adoptProposal(bytes32 proposal) external onlyPublicSocialRecovery {
+        if (uint96(bytes12(proposal)) == 4) {
+            owner = address(uint160(uint(proposal)));
+        } else if (uint96(bytes12(proposal)) == 5) {
+            bundler = address(uint160(uint(proposal)));
+        } else {
+            revert("adoptProposal: fail");
+        }
     }
 }

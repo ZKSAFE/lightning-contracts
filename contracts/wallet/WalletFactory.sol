@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "./SmartWallet.sol";
-import "../innovation/SmartWalletV2.sol";
+// import "./SmartWallet.sol"; //createWallet gas used: 2185288
+import "../innovation/SmartWalletV2.sol"; //createWallet gas used: 1114417
 import "hardhat/console.sol";
 
 contract WalletFactory {
