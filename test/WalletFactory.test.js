@@ -1,8 +1,6 @@
 const { ObjectId } = require('bson')
-const { m, d, b, n, s } = require('./help/BigNumberHelp')
-const { atomSign, uuidToBytes32 } = require('./help/AtomSignHelp')
-
-const NATIVE_ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
+const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
+const { atomSign, uuidToBytes32, toBundleDataArr } = require('./help/AtomSignHelp')
 
 describe('WalletFactory.test', function () {
     let accounts
@@ -44,7 +42,7 @@ describe('WalletFactory.test', function () {
     })
 
 
-    it('deploy BundlerManager Bundler WalletFactory', async function () {
+    it('deploy lightning', async function () {
         const BundlerManager = await ethers.getContractFactory('BundlerManager')
         bundlerManager = await BundlerManager.deploy()
         await bundlerManager.deployed()
@@ -101,6 +99,7 @@ describe('WalletFactory.test', function () {
         const SmartWallet = await ethers.getContractFactory('SmartWallet')
         const ERC = await ethers.getContractFactory('MockERC20')
 
+        let atomSignParams
         let atomSignParamsArr = []
 
         //wallet0: createWallet
@@ -115,7 +114,7 @@ describe('WalletFactory.test', function () {
             [uuidToBytes32(uuid1), accounts[1].address, bundler.address])
         callArr.push({ to, value, data })
 
-        let atomSignParams = await atomSign(accounts[0], wallet0Addr, callArr)
+        atomSignParams = await atomSign(accounts[0], wallet0Addr, callArr)
         atomSignParamsArr.push(atomSignParams)
 
         //wallet1: transfer
@@ -146,21 +145,10 @@ describe('WalletFactory.test', function () {
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
         atomSignParamsArr.push(atomSignParams)
 
-
-        let bundleDataArr = []
-        for (let p of atomSignParamsArr) {
-            let atomSignData = SmartWallet.interface.encodeFunctionData('atomSignCall',
-                [p.atomCallbytes, p.deadline, p.signature])
-
-            let bundleData = Bundler.interface.encodeFunctionData('executeOperation', [p.fromWallet, atomSignData])
-            bundleDataArr.push(bundleData)
-        }
-
-        let tx = await bundlerManager.bundle(bundleDataArr)
-        let tx2 = await tx.wait()
-        // console.log('bundle done', tx)
-        // console.log('bundle done2', tx2)
-        for (let event of tx2.events) {
+        //bundle
+        let bundleDataArr = await toBundleDataArr(atomSignParamsArr)
+        let tx = await (await bundlerManager.bundle(bundleDataArr)).wait()
+        for (let event of tx.events) {
             if (event.address == bundlerManager.address) {
                 if (event.eventSignature == 'Error(uint8)') {
                     console.log('Error index:', b(event.data))
@@ -173,14 +161,12 @@ describe('WalletFactory.test', function () {
 
 
     async function print() {
+        let tokenAddrs = [usdc.address, ETH_ADDRESS]
         console.log('')
-        
-        console.log('account0 usdc:', d(await usdc.balanceOf(accounts[0].address), 6), 'eth:', d(await provider.getBalance(accounts[0].address), 18))
-        console.log('account1 usdc:', d(await usdc.balanceOf(accounts[1].address), 6), 'eth:', d(await provider.getBalance(accounts[1].address), 18))
-        console.log('bundler usdc:', d(await usdc.balanceOf(bundler.address), 6), 'eth:', d(await provider.getBalance(bundler.address), 18))
-        wallet0Addr && console.log('wallet0 usdc:', d(await usdc.balanceOf(wallet0Addr), 6), 'eth:', d(await provider.getBalance(wallet0Addr), 18))
-        wallet1Addr && console.log('wallet1 usdc:', d(await usdc.balanceOf(wallet1Addr), 6), 'eth:', d(await provider.getBalance(wallet1Addr), 18))
-
-        console.log('')
+        console.log('account0', await balanceStr(accounts[0].address, tokenAddrs))
+        console.log('account1', await balanceStr(accounts[1].address, tokenAddrs))
+        console.log('bundler', await balanceStr(bundler.address, tokenAddrs))
+        wallet0Addr && console.log('wallet0', await balanceStr(wallet0Addr, tokenAddrs))
+        wallet1Addr && console.log('wallet1', await balanceStr(wallet1Addr, tokenAddrs))
     }
 })

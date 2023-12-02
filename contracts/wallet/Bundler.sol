@@ -13,18 +13,8 @@ interface IOwner {
 contract Bundler is IUniswapV3FlashCallback {
 
     address private immutable original;
-
     address public immutable bundlerManager;
-
     address internal _callTo;
-
-    Call[] internal _sandwichCalls;
-
-    struct Call {
-        address to;
-        uint value;
-        bytes data;
-    }
 
     modifier onlyBundlerManager() {
         require(
@@ -38,7 +28,6 @@ contract Bundler is IUniswapV3FlashCallback {
         bundlerManager = msg.sender;
         original = address(this);
     }
-
 
     receive() external payable {}
 
@@ -71,28 +60,27 @@ contract Bundler is IUniswapV3FlashCallback {
         address wallet,
         bytes calldata data,
         address[] calldata retTokens
-    ) public onlyBundlerManager returns (int[] memory changes){
-        int[] memory beforeBalances = new int[](retTokens.length);
+    ) public onlyBundlerManager returns (uint[] memory beforeBalance, uint[] memory afterBalance) {
+        beforeBalance = new uint[](retTokens.length);
         uint8 i;
-        for (i = 0; i<retTokens.length; i++) {
+        for (i = 0; i < retTokens.length; i++) {
             if (retTokens[i] == address(0)) {
-                beforeBalances[i] = int(wallet.balance);
+                beforeBalance[i] = wallet.balance;
             } else {
-                beforeBalances[i] = int(IERC20(retTokens[i]).balanceOf(wallet));
+                beforeBalance[i] = IERC20(retTokens[i]).balanceOf(wallet);
             }
         }
 
         executeOperation(wallet, data);
 
-        changes = new int[](retTokens.length);
-        for (i = 0; i<retTokens.length; i++) {
+        afterBalance = new uint[](retTokens.length);
+        for (i = 0; i < retTokens.length; i++) {
              if (retTokens[i] == address(0)) {
-                changes[i] = int(wallet.balance) - beforeBalances[i];
+                afterBalance[i] = wallet.balance;
             } else {
-                changes[i] = int(IERC20(retTokens[i]).balanceOf(wallet)) - beforeBalances[i];
+                afterBalance[i] = IERC20(retTokens[i]).balanceOf(wallet);
             }
         }
-        return changes;
     }
 
 
