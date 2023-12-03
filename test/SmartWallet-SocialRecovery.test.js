@@ -74,7 +74,7 @@ describe('SmartWallet-SocialRecovery.test', function () {
         callArr.push({to, value, data})
         
         let atomSignParams = await atomSign(accounts[0], wallet.address, callArr)
-        await bundler.executeOperation(wallet.address, toOperationData(atomSignParams))
+        await bundler.executeOperation(wallet.address, await toOperationData(atomSignParams))
 
         await printSocialRecovery()
         await printOwner()
@@ -95,7 +95,7 @@ describe('SmartWallet-SocialRecovery.test', function () {
         callArr.push({to, value, data})
         
         let atomSignParams = await atomSign(accounts[0], wallet.address, callArr)
-        await bundler.executeOperation(wallet.address, toOperationData(atomSignParams))
+        await bundler.executeOperation(wallet.address, await toOperationData(atomSignParams))
 
         await printOwner()
     })
@@ -115,7 +115,7 @@ describe('SmartWallet-SocialRecovery.test', function () {
         callArr.push({to, value, data})
         
         let atomSignParams = await atomSign(accounts[1], wallet.address, callArr)
-        await bundler.executeOperation(wallet.address, toOperationData(atomSignParams))
+        await bundler.executeOperation(wallet.address, await toOperationData(atomSignParams))
 
         await printOwner()
     })
