@@ -123,7 +123,7 @@ describe('returnChanges.test', function () {
         let data = toOperationData(atomSignParams)
         let retTokens = [usdt.address, ETH_ADDRESS]
         let changes = await bundler.callStatic.executeOperationReturnChanges(wallet1.address, data, retTokens)
-        console.log('beforeBalance:', changes.beforeBalance, 'afterBalance:', changes.afterBalance)
+        console.log('beforeBalances:', changes.beforeBalances, 'afterBalances:', changes.afterBalances)
 
         await bundler.executeOperation(wallet1.address, data)
 

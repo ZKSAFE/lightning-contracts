@@ -24,6 +24,22 @@ contract Bundler is IUniswapV3FlashCallback {
         _;
     }
 
+    modifier onlyCallTo() {
+        require(
+            _callTo == msg.sender,
+            "onlyCallTo: caller is not the _callTo"
+        );
+        _;
+    }
+
+    modifier onlyOriginal() {
+        require(
+            original == msg.sender,
+            "onlyOriginal: caller is not the original"
+        );
+        _;
+    }
+
     constructor() {
         bundlerManager = msg.sender;
         original = address(this);
@@ -41,17 +57,7 @@ contract Bundler is IUniswapV3FlashCallback {
         bytes calldata data
     ) public onlyBundlerManager {
         _callTo = wallet;
-
-        (bool success, bytes memory result) = _callTo.call{
-            value: 0
-        }(data);
-
-        if (!success) {
-            assembly {
-                revert(add(result, 32), mload(result))
-            }
-        }
-
+        _doSingleCall(_callTo, 0, data);
         _callTo = address(0);
     }
 
@@ -60,25 +66,25 @@ contract Bundler is IUniswapV3FlashCallback {
         address wallet,
         bytes calldata data,
         address[] calldata retTokens
-    ) public onlyBundlerManager returns (uint[] memory beforeBalance, uint[] memory afterBalance) {
-        beforeBalance = new uint[](retTokens.length);
+    ) public onlyBundlerManager returns (uint[] memory beforeBalances, uint[] memory afterBalances) {
+        beforeBalances = new uint[](retTokens.length);
         uint8 i;
         for (i = 0; i < retTokens.length; i++) {
             if (retTokens[i] == address(0)) {
-                beforeBalance[i] = wallet.balance;
+                beforeBalances[i] = wallet.balance;
             } else {
-                beforeBalance[i] = IERC20(retTokens[i]).balanceOf(wallet);
+                beforeBalances[i] = IERC20(retTokens[i]).balanceOf(wallet);
             }
         }
 
         executeOperation(wallet, data);
 
-        afterBalance = new uint[](retTokens.length);
+        afterBalances = new uint[](retTokens.length);
         for (i = 0; i < retTokens.length; i++) {
              if (retTokens[i] == address(0)) {
-                afterBalance[i] = wallet.balance;
+                afterBalances[i] = wallet.balance;
             } else {
-                afterBalance[i] = IERC20(retTokens[i]).balanceOf(wallet);
+                afterBalances[i] = IERC20(retTokens[i]).balanceOf(wallet);
             }
         }
     }
@@ -88,10 +94,33 @@ contract Bundler is IUniswapV3FlashCallback {
         address to,
         uint value,
         bytes calldata data
-    ) external {
-        require(msg.sender == _callTo, "bundlerCallback: Only _callTo");
+    ) external onlyCallTo {
+        _doSingleCall(to, value, data);
+    }
 
-        (bool success, bytes memory result) = to.call{value: value}(data);
+
+    function bundlerAtomCallback(
+        bytes calldata atomCallBytes
+    ) external onlyCallTo {
+        _doAtomCall(atomCallBytes);
+    }
+
+
+    /**
+     * Supported atomCall
+     */
+    function atomCall(
+        bytes calldata atomCallBytes
+    ) external onlyBundlerManager {
+        _doAtomCall(atomCallBytes);
+    }
+
+
+    /**
+     * Supported delegatecall
+     */
+    function delegateCall(address to, bytes calldata data) external onlyOriginal {
+        (bool success, bytes memory result) = to.delegatecall(data);
         if (!success) {
             assembly {
                 revert(add(result, 32), mload(result))
@@ -100,39 +129,10 @@ contract Bundler is IUniswapV3FlashCallback {
     }
 
 
-    function bundlerAtomCallback(
-        bytes calldata atomCallBytes
-    ) external {
-        require(msg.sender == _callTo, "bundlerCallback: Only _callTo");
-
-        _doAtomCall(atomCallBytes);
-    }
-
-
-    function _doAtomCall(bytes calldata atomCallBytes) private {
-        uint i;
-        while (i < atomCallBytes.length) {
-            address to = address(uint160(bytes20(atomCallBytes[i:i + 20])));
-            uint value = uint(bytes32(atomCallBytes[i + 20:i + 52]));
-            uint len = uint(bytes32(atomCallBytes[i + 52:i + 84]));
-
-            (bool success, bytes memory result) = to.call{value: value}(
-                atomCallBytes[i + 84:i + 84 + len]
-            );
-            if (!success) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
-            }
-
-            i += 84 + len;
-        }
-    }
-
-
     /////////////////////
     ////  flashloan  ////
     /////////////////////
+
     function executeFlash(
         address pool,
         uint borrowAmount0,
@@ -154,8 +154,34 @@ contract Bundler is IUniswapV3FlashCallback {
         uint,
         uint,
         bytes calldata atomCallBytes
-    ) external override {
-        require(msg.sender == _callTo, "uniswapV3FlashCallback: Only _callTo");
+    ) external override onlyCallTo {
         _doAtomCall(atomCallBytes);
+    }
+
+
+    /////////////////////
+    ////  internal   ////
+    /////////////////////
+
+    function _doAtomCall(bytes calldata atomCallBytes) internal {
+        uint i;
+        while (i < atomCallBytes.length) {
+            address to = address(uint160(bytes20(atomCallBytes[i:i + 20])));
+            uint value = uint(bytes32(atomCallBytes[i + 20:i + 52]));
+            uint len = uint(bytes32(atomCallBytes[i + 52:i + 84]));
+
+            _doSingleCall(to, value, atomCallBytes[i + 84:i + 84 + len]);
+            i += 84 + len;
+        }
+    }
+
+
+    function _doSingleCall(address to, uint value, bytes calldata data) internal {
+        (bool success, bytes memory result) = to.call{value: value}(data);
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
     }
 }

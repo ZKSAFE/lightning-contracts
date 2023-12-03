@@ -1,7 +1,8 @@
 const { BigNumber } = require('ethers')
 const { ethers } = require('hardhat')
 
-const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+const ETH_ADDRESS = ZERO_ADDRESS
 const MAX_UINT256 = ethers.constants.MaxUint256
 
 function m(num, decimals) {
@@ -34,10 +35,15 @@ async function delay(sec) {
 }
 
 async function balanceStr(userAddr, tokenAddrs) {
+    const MockERC20 = await ethers.getContractFactory('MockERC20')
     let accounts = await ethers.getSigners()
     let provider = accounts[0].provider
+
+    if (userAddr == undefined || userAddr == null) {
+        userAddr = ZERO_ADDRESS
+    }
+
     let str = ''
-    const MockERC20 = await ethers.getContractFactory('MockERC20')
     for (let tokenAddr of tokenAddrs) {
         let tokenName, banlance
         if (tokenAddr == ETH_ADDRESS) {
@@ -53,4 +59,4 @@ async function balanceStr(userAddr, tokenAddrs) {
     return str
 }
 
-module.exports = { ETH_ADDRESS, MAX_UINT256, m, d, b, n, s, delay, balanceStr }
+module.exports = { ZERO_ADDRESS, ETH_ADDRESS, MAX_UINT256, m, d, b, n, s, delay, balanceStr }
