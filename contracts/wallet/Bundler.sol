@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3FlashCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "hardhat/console.sol";
 
 interface IOwner {
@@ -11,6 +12,7 @@ interface IOwner {
 }
 
 contract Bundler is IUniswapV3FlashCallback {
+    using Strings for uint;
 
     address private immutable original;
     address public immutable bundlerManager;
@@ -66,27 +68,37 @@ contract Bundler is IUniswapV3FlashCallback {
         address wallet,
         bytes calldata data,
         address[] calldata retTokens
-    ) public onlyBundlerManager returns (uint[] memory beforeBalances, uint[] memory afterBalances) {
-        beforeBalances = new uint[](retTokens.length);
+    ) public {
+        uint startGasleft = gasleft();
+
+        string memory beforeBalances = "";
         uint8 i;
         for (i = 0; i < retTokens.length; i++) {
             if (retTokens[i] == address(0)) {
-                beforeBalances[i] = wallet.balance;
+                beforeBalances = string.concat(beforeBalances, wallet.balance.toHexString());
             } else {
-                beforeBalances[i] = IERC20(retTokens[i]).balanceOf(wallet);
+                beforeBalances = string.concat(beforeBalances, IERC20(retTokens[i]).balanceOf(wallet).toHexString());
             }
         }
 
-        executeOperation(wallet, data);
+        //executeOperation
+        uint beforeGasleft = gasleft();
+        _callTo = wallet;
+        _doSingleCall(_callTo, 0, data);
+        _callTo = address(0);
+        uint gasUse = beforeGasleft - gasleft();
 
-        afterBalances = new uint[](retTokens.length);
+        string memory afterBalances = "";
         for (i = 0; i < retTokens.length; i++) {
              if (retTokens[i] == address(0)) {
-                afterBalances[i] = wallet.balance;
+                afterBalances = string.concat(afterBalances, wallet.balance.toHexString());
             } else {
-                afterBalances[i] = IERC20(retTokens[i]).balanceOf(wallet);
+                afterBalances = string.concat(afterBalances, IERC20(retTokens[i]).balanceOf(wallet).toHexString());
             }
         }
+
+        //it must stop, because it's public
+        revert(string.concat("TheChanges", beforeBalances, afterBalances, startGasleft.toHexString(), gasUse.toHexString()));
     }
 
 
