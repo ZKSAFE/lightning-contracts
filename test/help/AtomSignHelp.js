@@ -54,4 +54,16 @@ async function toBundleDataArr(atomSignParamsArr) {
     return bundleDataArr
 }
 
-module.exports = { atomSign, encodeAtomCallBytes, uuidToBytes32, toOperationData, toBundleDataArr }
+async function toBundleData(atomSignParams) {
+    let SmartWallet = await ethers.getContractFactory('SmartWalletV2')
+    let Bundler = await ethers.getContractFactory('Bundler')
+
+    let p = atomSignParams
+    let atomSignData = SmartWallet.interface.encodeFunctionData('atomSignCall',
+        [p.atomCallBytes, p.deadline, p.signature])
+
+    let bundleData = Bundler.interface.encodeFunctionData('executeOperation', [p.fromWallet, atomSignData])
+    return bundleData
+}
+
+module.exports = { atomSign, encodeAtomCallBytes, uuidToBytes32, toOperationData, toBundleDataArr, toBundleData }

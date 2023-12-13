@@ -1,6 +1,6 @@
 const { ObjectId } = require('bson')
 const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
-const { atomSign, uuidToBytes32, toBundleDataArr, encodeAtomCallBytes } = require('./help/AtomSignHelp')
+const { atomSign, uuidToBytes32, toBundleDataArr, encodeAtomCallBytes, toBundleData } = require('./help/AtomSignHelp')
 
 describe('WalletFactory.test', function () {
     let accounts
@@ -111,7 +111,8 @@ describe('WalletFactory.test', function () {
         const ERC = await ethers.getContractFactory('MockERC20')
 
         let atomSignParams
-        let atomSignParamsArr = []
+        let bundleData
+        let bundleDataArr = []
 
         //bundler: createWallet
         let callArr = []
@@ -126,7 +127,8 @@ describe('WalletFactory.test', function () {
         callArr.push({ to, value, data })
 
         let atomCallBytes = encodeAtomCallBytes(callArr)
-        let bundleData = SmartWallet.interface.encodeFunctionData('atomCall', [atomCallBytes])
+        bundleData = SmartWallet.interface.encodeFunctionData('atomCall', [atomCallBytes])
+        bundleDataArr.push(bundleData)
 
         //wallet1: transfer
         callArr = []
@@ -140,7 +142,8 @@ describe('WalletFactory.test', function () {
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
-        atomSignParamsArr.push(atomSignParams)
+        bundleData = await toBundleData(atomSignParams)
+        bundleDataArr.push(bundleData)
 
         //wallet1: transfer
         callArr = []
@@ -154,16 +157,13 @@ describe('WalletFactory.test', function () {
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
-        atomSignParamsArr.push(atomSignParams)
+        bundleData = await toBundleData(atomSignParams)
+        bundleDataArr.push(bundleData)
 
         //bundle
-        let bundleDataArr = await toBundleDataArr(atomSignParamsArr)
-        bundleDataArr.unshift(bundleData)
         let tx = await (await bundlerManager.bundle(bundleDataArr)).wait()
-        console.log(tx)
         for (let event of tx.events) {
             if (event.address == bundlerManager.address) {
-                console.log(event)
                 if (event.eventSignature == 'Error(uint8)') {
                     console.log('Error index:', b(event.data))
                 }
