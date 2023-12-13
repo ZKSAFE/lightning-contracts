@@ -1,6 +1,6 @@
 const { ObjectId } = require('bson')
 const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
-const { atomSign, uuidToBytes32, toBundleDataArr } = require('./help/AtomSignHelp')
+const { atomSign, uuidToBytes32, toBundleDataArr, encodeAtomCallBytes } = require('./help/AtomSignHelp')
 
 describe('WalletFactory.test', function () {
     let accounts
@@ -53,7 +53,7 @@ describe('WalletFactory.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([dai.address, usdt.address, usdc.address], 1)
+        factory = await WalletFactory.deploy([dai.address, usdt.address, usdc.address], 1, bundler.address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
     })
@@ -71,7 +71,18 @@ describe('WalletFactory.test', function () {
 
 
     it('createWallet', async function () {
-        let tx = await (await factory.createWallet(uuidToBytes32(uuid0), accounts[0].address, bundler.address)).wait()
+        let callArr = []
+        let to = '0x'
+        let value = 0
+        let data = '0x'
+
+        to = factory.address
+        const WalletFactory = await ethers.getContractFactory('WalletFactory')
+        data = WalletFactory.interface.encodeFunctionData('createWallet(bytes32,address,address)',
+            [uuidToBytes32(uuid0), accounts[0].address, bundler.address])
+        callArr.push({ to, value, data })
+
+        let tx = await (await bundler.atomCall(encodeAtomCallBytes(callArr))).wait()
         console.log('createWallet gas used:', tx.cumulativeGasUsed, 'gas price:', tx.effectiveGasPrice)
 
         let hasWallet =  await factory.wallets(wallet0Addr)
@@ -86,7 +97,7 @@ describe('WalletFactory.test', function () {
         wallet1Addr = await factory.computeWalletAddr(uuidToBytes32(uuid1))
     
         await usdc.transfer(wallet1Addr, m(10, 6))
-        console.log('deposit USDC to wallet1Addr', wallet1Addr)
+        console.log('deposit $USD to wallet1Addr', wallet1Addr)
 
         await print()
     })
@@ -102,7 +113,7 @@ describe('WalletFactory.test', function () {
         let atomSignParams
         let atomSignParamsArr = []
 
-        //wallet0: createWallet
+        //bundler: createWallet
         let callArr = []
         let to = '0x'
         let value = 0
@@ -114,8 +125,8 @@ describe('WalletFactory.test', function () {
             [uuidToBytes32(uuid1), accounts[1].address, bundler.address])
         callArr.push({ to, value, data })
 
-        atomSignParams = await atomSign(accounts[0], wallet0Addr, callArr)
-        atomSignParamsArr.push(atomSignParams)
+        let atomCallBytes = encodeAtomCallBytes(callArr)
+        let bundleData = SmartWallet.interface.encodeFunctionData('atomCall', [atomCallBytes])
 
         //wallet1: transfer
         callArr = []
@@ -147,9 +158,12 @@ describe('WalletFactory.test', function () {
 
         //bundle
         let bundleDataArr = await toBundleDataArr(atomSignParamsArr)
+        bundleDataArr.unshift(bundleData)
         let tx = await (await bundlerManager.bundle(bundleDataArr)).wait()
+        console.log(tx)
         for (let event of tx.events) {
             if (event.address == bundlerManager.address) {
+                console.log(event)
                 if (event.eventSignature == 'Error(uint8)') {
                     console.log('Error index:', b(event.data))
                 }

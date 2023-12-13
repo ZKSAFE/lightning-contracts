@@ -10,24 +10,39 @@ import "hardhat/console.sol";
 contract WalletFactory {
 
     address[] public stableCoinArr;
-
     uint immutable public fee;
+    address immutable public owner; //owner is Bundler contract address
 
     mapping(address => bool) public wallets;
 
-    event WalletCreated(address wallet, address owner, address bundler);
+    event WalletCreated(address wallet, address walletOwner, address bundler);
 
-    constructor(address[] memory _stableCoinArr, uint _fee) {
-        stableCoinArr = _stableCoinArr;
-        fee = _fee;
+    modifier onlyOwner() {
+        require(
+            owner == msg.sender,
+            "onlyOwner: caller is not the owner"
+        );
+        _;
     }
 
-    function createWallet(bytes32 salt, address owner, address bundler) public returns (address) {
+    constructor(address[] memory _stableCoinArr, uint _fee, address _owner) {
+        stableCoinArr = _stableCoinArr;
+        fee = _fee;
+        owner = _owner;
+    }
+
+    /**
+     * Create SmartWalletV2 with UUID, so that user's SmartWallet address can be the same on other EVM chains
+     * @param salt user's UUID
+     * @param walletOwner SmartWalletV2's owner, also user's EOA
+     * @param bundler Bundler contract address
+     */
+    function createWallet(bytes32 salt, address walletOwner, address bundler) public onlyOwner returns (address) {
         SmartWalletV2 wallet = new SmartWalletV2{salt: salt}();
 
         bool isInit;
         if (stableCoinArr.length == 0) {
-            wallet.init(owner, bundler, address(0), 0, bytes(""));
+            wallet.init(walletOwner, bundler, address(0), 0, bytes(""));
             isInit = true;
 
         } else {
@@ -35,7 +50,7 @@ contract WalletFactory {
                 address stableCoinAddr = stableCoinArr[i];
                 uint feeAmount = fee * 10 ** uint(IERC20Metadata(stableCoinAddr).decimals());
                 if (IERC20(stableCoinAddr).balanceOf(address(wallet)) >= feeAmount) {
-                    wallet.init(owner, bundler, stableCoinAddr, 0, abi.encodeCall(IERC20.transfer, (bundler, feeAmount)));
+                    wallet.init(walletOwner, bundler, stableCoinAddr, 0, abi.encodeCall(IERC20.transfer, (bundler, feeAmount)));
                     isInit = true;
                     break;
                 }
@@ -44,7 +59,7 @@ contract WalletFactory {
         require(isInit, "createWallet: need $fee in SmartWallet");
         
         wallets[address(wallet)] = true;
-        emit WalletCreated(address(wallet), owner, bundler);
+        emit WalletCreated(address(wallet), walletOwner, bundler);
 
         return address(wallet);
     }

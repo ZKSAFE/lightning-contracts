@@ -227,8 +227,8 @@ contract SmartWalletV2 {
     }
 
     function resetBundler() external onlyPendingBundler {
-        // require(block.timestamp > pendingBundlerStartTime + 3600 * 24 * 3, "resetBundler: needs 3 days pending");
-        require(block.timestamp > pendingBundlerStartTime + 3, "resetBundler: needs 3 secs pending");
+        require(block.timestamp > pendingBundlerStartTime + 3600 * 24 * 7, "resetBundler: needs 7 days pending");
+        // require(block.timestamp > pendingBundlerStartTime + 3, "resetBundler: needs 3 secs pending");
         
         bundler = pendingBundler;
         pendingBundler = address(0);
