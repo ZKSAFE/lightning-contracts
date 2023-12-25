@@ -3,6 +3,12 @@ const { utils } = require('ethers')
 const { m, d, b, n, s, delay } = require('./help/BigNumberHelp')
 const { atomSign, toOperationData, uuidToBytes32 } = require('./help/AtomSignHelp')
 
+const Reject = utils.hexZeroPad(0, 32)
+const Add_Guardian = utils.hexZeroPad(1, 12)
+const Remove_Guardian = utils.hexZeroPad(2, 12)
+const Update_NeedGuardiansNum = utils.hexZeroPad(3, 12)
+const Change_Owner = utils.hexZeroPad(4, 12)
+
 describe('SmartWallet-SocialRecovery.test', function () {
     let accounts
     let provider
@@ -33,7 +39,7 @@ describe('SmartWallet-SocialRecovery.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([], 0)
+        factory = await WalletFactory.deploy(accounts[0].address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 
@@ -81,6 +87,7 @@ describe('SmartWallet-SocialRecovery.test', function () {
     })
 
     it('changeOwner: accounts[1]', async function () {
+        //owner can change owner immediately
         let callArr = []
         let to = '0x'
         let value = 0
@@ -97,10 +104,12 @@ describe('SmartWallet-SocialRecovery.test', function () {
         let atomSignParams = await atomSign(accounts[0], wallet.address, callArr)
         await bundler.executeOperation(wallet.address, await toOperationData(atomSignParams))
 
+        await printSocialRecovery()
         await printOwner()
     })
 
     it('changeBundler: accounts[1]', async function () {
+        //change bundler should wait pending time
         let callArr = []
         let to = '0x'
         let value = 0
@@ -126,6 +135,7 @@ describe('SmartWallet-SocialRecovery.test', function () {
             console.log('tryResetBundler...')
             await delay(1)
             try {
+                //only the pending bundler can call this
                 await wallet.connect(accounts[1]).resetBundler()
                 console.log('resetBundler done')
             } catch (error) {
@@ -135,6 +145,18 @@ describe('SmartWallet-SocialRecovery.test', function () {
 
         await tryResetBundler()
 
+        await printOwner()
+    })
+
+    it('changeOwner: accounts[2]', async function () {
+        //SocialRecovery can change owner also
+        let proposal = utils.hexConcat([Change_Owner, accounts[2].address])
+        await publicSocialRecovery.connect(accounts[0]).propose(wallet.address, proposal)
+        await printSocialRecovery()
+
+        await publicSocialRecovery.connect(accounts[1]).propose(wallet.address, proposal)
+        await printSocialRecovery()
+        
         await printOwner()
     })
 

@@ -59,4 +59,29 @@ async function balanceStr(userAddr, tokenAddrs) {
     return str
 }
 
-module.exports = { ZERO_ADDRESS, ETH_ADDRESS, MAX_UINT256, m, d, b, n, s, delay, balanceStr }
+function decodeChanges(errorStr) {
+    let start = errorStr.indexOf('TheChanges')
+    errorStr = errorStr.slice(start)
+    let end = errorStr.indexOf('"')
+    errorStr = errorStr.slice(0, end)
+    console.log(errorStr)
+
+    let arr = errorStr.split('0x')
+    arr.shift()
+
+    let gasUse = b('0x' + arr.pop())
+    let startGasleft = b('0x' + arr.pop())
+    let beforeBalances = []
+    let afterBalances = []
+    let i
+    for (i= 0; i < arr.length / 2; i++) {
+        beforeBalances.push(b('0x' + arr[i]))
+    }
+    for (i = arr.length / 2; i < arr.length; i++) {
+        afterBalances.push(b('0x' + arr[i]))
+    }
+
+    return { beforeBalances, afterBalances, startGasleft, gasUse }
+}
+
+module.exports = { ZERO_ADDRESS, ETH_ADDRESS, MAX_UINT256, m, d, b, n, s, delay, balanceStr, decodeChanges }

@@ -39,7 +39,7 @@ describe('SocialRecovery.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([], 0)
+        factory = await WalletFactory.deploy(accounts[0].address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 

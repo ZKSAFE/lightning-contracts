@@ -1,8 +1,8 @@
 const util = require('util')
 const { ObjectId } = require('bson')
 const { utils } = require('ethers')
-const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
-const { atomSign, toOperationData, uuidToBytes32, toBundleDataArr } = require('./help/AtomSignHelp')
+const { m, d, b, n, s, ETH_ADDRESS, balanceStr, decodeChanges } = require('./help/BigNumberHelp')
+const { atomSign, toOperationData, uuidToBytes32 } = require('./help/AtomSignHelp')
 
 describe('returnChanges.test', function () {
     let accounts
@@ -48,7 +48,7 @@ describe('returnChanges.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([], 0)
+        factory = await WalletFactory.deploy(accounts[0].address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 
@@ -120,12 +120,18 @@ describe('returnChanges.test', function () {
     })
 
     it('bundler executeOperation', async function () {
-        let data = await toOperationData(atomSignParams)
+        let opData = await toOperationData(atomSignParams)
         let retTokens = [usdt.address, ETH_ADDRESS]
-        let changes = await bundler.callStatic.executeOperationReturnChanges(wallet1.address, data, retTokens)
+        let gasLimit = 3000000
+        let changes
+        try {
+            await bundler.callStatic.executeOperationReturnChanges(wallet1.address, opData, retTokens, { gasLimit })
+        } catch (error) {
+            changes = decodeChanges(error.toString())
+        }
         console.log('beforeBalances:', changes.beforeBalances, 'afterBalances:', changes.afterBalances)
 
-        await bundler.executeOperation(wallet1.address, data)
+        await bundler.executeOperation(wallet1.address, opData)
 
         await print()
     })

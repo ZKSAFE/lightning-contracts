@@ -1,6 +1,6 @@
 const { ObjectId } = require('bson')
 const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
-const { atomSign, uuidToBytes32, toBundleDataArr, encodeAtomCallBytes, toBundleData } = require('./help/AtomSignHelp')
+const { atomSign, uuidToBytes32, encodeAtomCallBytes, toBundleData } = require('./help/AtomSignHelp')
 
 describe('WalletFactory.test', function () {
     let accounts
@@ -53,7 +53,7 @@ describe('WalletFactory.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([dai.address, usdt.address, usdc.address], 1, bundler.address)
+        factory = await WalletFactory.deploy(bundler.address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
     })
@@ -114,12 +114,12 @@ describe('WalletFactory.test', function () {
         let bundleData
         let bundleDataArr = []
 
-        //bundler: createWallet
         let callArr = []
         let to = '0x'
         let value = 0
         let data = '0x'
-
+        
+        //bundler: createWallet
         to = factory.address
         value = 0
         data = WalletFactory.interface.encodeFunctionData('createWallet(bytes32,address,address)',
@@ -130,7 +130,7 @@ describe('WalletFactory.test', function () {
         bundleData = SmartWallet.interface.encodeFunctionData('atomCall', [atomCallBytes])
         bundleDataArr.push(bundleData)
 
-        //wallet1: transfer
+        //wallet1: transfer USD as gas
         callArr = []
         to = '0x'
         value = 0
@@ -138,14 +138,14 @@ describe('WalletFactory.test', function () {
 
         to = usdc.address
         value = 0
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(1, 6)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1, 6)])
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)
         bundleData = await toBundleData(atomSignParams)
         bundleDataArr.push(bundleData)
 
-        //wallet1: transfer
+        //wallet1: transfer operation
         callArr = []
         to = '0x'
         value = 0
@@ -153,7 +153,7 @@ describe('WalletFactory.test', function () {
 
         to = usdc.address
         value = 0
-        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(1, 6)])
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [accounts[1].address, m(2, 6)])
         callArr.push({ to, value, data })
 
         atomSignParams = await atomSign(accounts[1], wallet1Addr, callArr)

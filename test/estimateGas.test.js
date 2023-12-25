@@ -1,8 +1,8 @@
 const util = require('util')
 const { ObjectId } = require('bson')
 const { utils } = require('ethers')
-const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
-const { atomSign, toOperationData, uuidToBytes32, toBundleDataArr } = require('./help/AtomSignHelp')
+const { m, d, b, n, s, ETH_ADDRESS, balanceStr, decodeChanges } = require('./help/BigNumberHelp')
+const { atomSign, toOperationData, uuidToBytes32 } = require('./help/AtomSignHelp')
 
 describe('estimateGas.test', function () {
     let accounts
@@ -48,7 +48,7 @@ describe('estimateGas.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([], 0)
+        factory = await WalletFactory.deploy(accounts[0].address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
 
@@ -140,32 +140,6 @@ describe('estimateGas.test', function () {
 
         await print()
     })
-
-
-    function decodeChanges(errorStr) {
-        let start = errorStr.indexOf('TheChanges')
-        errorStr = errorStr.slice(start)
-        let end = errorStr.indexOf('"')
-        errorStr = errorStr.slice(0, end)
-        console.log(errorStr)
-
-        let arr = errorStr.split('0x')
-        arr.shift()
-
-        let gasUse = b('0x' + arr.pop())
-        let startGasleft = b('0x' + arr.pop())
-        let beforeBalances = []
-        let afterBalances = []
-        let i
-        for (i= 0; i < arr.length / 2; i++) {
-            beforeBalances.push(b('0x' + arr[i]))
-        }
-        for (i = arr.length / 2; i < arr.length; i++) {
-            afterBalances.push(b('0x' + arr[i]))
-        }
-
-        return { beforeBalances, afterBalances, startGasleft, gasUse }
-    }
 
 
     async function print() {

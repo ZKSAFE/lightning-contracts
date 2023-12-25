@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 interface IPublicSocialRecovery {
     function setGroup(
@@ -80,25 +80,13 @@ contract SmartWalletV2 {
 
     function init(
         address _owner,
-        address _bundler,
-        address to,
-        uint value,
-        bytes calldata data
+        address _bundler
     ) public {
         require(!isInit, "init() runs only once");
         isInit = true;
 
         bundler = _bundler;
         owner = _owner;
-
-        if (to != address(0)) {
-            (bool success, bytes memory result) = to.call{value: value}(data);
-            if (!success) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
-            }
-        }
     }
 
     /**
@@ -228,7 +216,7 @@ contract SmartWalletV2 {
 
     function resetBundler() external onlyPendingBundler {
         require(block.timestamp > pendingBundlerStartTime + 3600 * 24 * 7, "resetBundler: needs 7 days pending");
-        // require(block.timestamp > pendingBundlerStartTime + 3, "resetBundler: needs 3 secs pending");
+        // require(block.timestamp > pendingBundlerStartTime + 3, "resetBundler: needs 3 secs pending [only for testing]");
         
         bundler = pendingBundler;
         pendingBundler = address(0);

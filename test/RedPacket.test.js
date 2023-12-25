@@ -1,6 +1,8 @@
 const { ObjectId } = require('bson')
+const { ethers } = require('hardhat')
+const utils = ethers.utils
 const { m, d, b, n, s, ETH_ADDRESS, balanceStr } = require('./help/BigNumberHelp')
-const { atomSign, uuidToBytes32, encodeAtomCallBytes, toOperationData } = require('./help/AtomSignHelp')
+const { atomSign, uuidToBytes32, encodeAtomCallBytes, toOperationData, toBundleData } = require('./help/AtomSignHelp')
 
 describe('RedPacket.test', function () {
     let accounts
@@ -54,7 +56,7 @@ describe('RedPacket.test', function () {
         console.log('bundler deployed:', bundler.address)
 
         const WalletFactory = await ethers.getContractFactory('WalletFactory')
-        factory = await WalletFactory.deploy([dai.address, usdt.address, usdc.address], 1)
+        factory = await WalletFactory.deploy(bundler.address)
         await factory.deployed()
         console.log('factory deployed:', factory.address)
     })
@@ -97,6 +99,7 @@ describe('RedPacket.test', function () {
 
     it('wallet1~10 claim Red-packet', async function () {
         const ERC = await ethers.getContractFactory('MockERC20')
+        const SmartWallet = await ethers.getContractFactory('SmartWalletV2')
 
         let callArr = []
         let to = '0x'
@@ -123,6 +126,11 @@ describe('RedPacket.test', function () {
         data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [wallets[0].address, m(50, 6)])
         callArr.push({ to, value, data })
 
+        //bunle
+        // let atomCallBytes = encodeAtomCallBytes(callArr)
+        // let bundleData = SmartWallet.interface.encodeFunctionData('atomCall', [atomCallBytes])
+        // let bundleDataArr = [bundleData]
+        // let tx = await (await bundlerManager.bundle(bundleDataArr)).wait()
 
         let tx = await (await bundler.atomCall(encodeAtomCallBytes(callArr))).wait()
         console.log('bundle gas used:', tx.cumulativeGasUsed)
@@ -142,19 +150,63 @@ describe('RedPacket.test', function () {
 
     async function createWallet(account, uuid) {
         const SmartWallet = await ethers.getContractFactory('SmartWalletV2')
+        const WalletFactory = await ethers.getContractFactory('WalletFactory')
+        const ERC = await ethers.getContractFactory('MockERC20')
 
-        let tx = await (await factory.createWallet(
-            uuidToBytes32(uuid), account.address, bundler.address)).wait()
-        let walletAddr
+        let walletAddr = await factory.computeWalletAddr(uuidToBytes32(uuid))
+
+        let atomSignParams
+        let bundleData
+        let bundleDataArr = []
+
+        let callArr = []
+        let to = '0x'
+        let value = 0
+        let data = '0x'
+
+        //bundler: createWallet
+        to = factory.address
+        value = 0
+        data = WalletFactory.interface.encodeFunctionData('createWallet(bytes32,address,address)',
+            [uuidToBytes32(uuid), account.address, bundler.address])
+        callArr.push({ to, value, data })
+
+        let atomCallBytes = encodeAtomCallBytes(callArr)
+        bundleData = SmartWallet.interface.encodeFunctionData('atomCall', [atomCallBytes])
+        bundleDataArr.push(bundleData)
+
+        //wallet1: transfer USD as gas
+        callArr = []
+        to = '0x'
+        value = 0
+        data = '0x'
+
+        to = usdc.address
+        value = 0
+        data = ERC.interface.encodeFunctionData('transfer(address,uint256)', [bundler.address, m(1, 6)])
+        callArr.push({ to, value, data })
+
+        atomSignParams = await atomSign(account, walletAddr, callArr)
+        bundleData = await toBundleData(atomSignParams)
+        bundleDataArr.push(bundleData)
+
+        //bundle
+        let tx = await (await bundlerManager.bundle(bundleDataArr)).wait()
         for (let event of tx.events) {
+            if (event.address == bundlerManager.address) {
+                if (event.eventSignature == 'Error(uint8)') {
+                    console.log('Error index:', b(event.data))
+                }
+            }
+
             if (event.address == factory.address) {
-                if (event.eventSignature == 'WalletCreated(address,address,address)') {
-                    walletAddr = event.args[0]
-                    break
+                let deployedWalletAddr = utils.getAddress(utils.hexDataSlice(event.topics[1], 12))
+                if (deployedWalletAddr != walletAddr) {
+                    console.error('deployedWalletAddr wrong!', deployedWalletAddr, walletAddr)
                 }
             }
         }
-
+        
         let wallet = SmartWallet.attach(walletAddr)
         let index = accounts.indexOf(account)
         wallets[index] = wallet
