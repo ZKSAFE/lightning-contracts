@@ -2,14 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./IPublicSocialRecovery.sol";
 // import "hardhat/console.sol";
-
-interface IPublicSocialRecovery {
-    function setGroup(
-        address[] calldata guardians,
-        uint8 needGuardiansNum
-    ) external;
-}
 
 contract SmartWalletV2 {
     using ECDSA for bytes32;

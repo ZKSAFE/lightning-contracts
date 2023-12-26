@@ -2,18 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./Bundler.sol";
-
-interface IPublicSocialRecovery {
-    function setGroup(
-        address[] calldata guardians,
-        uint8 needGuardiansNum
-    ) external;
-}
+import "./IPublicSocialRecovery.sol";
 
 contract BundlerManager {
 
     address public owner;
-    address public bundler;
+    address public immutable bundler;
     address public publicSocialRecovery;
 
     event OwnerChanged(address oldOwner, address newOwner);

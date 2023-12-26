@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
   "contractName": "IPublicSocialRecovery",
-  "sourceName": "contracts/wallet/BundlerManager.sol",
+  "sourceName": "contracts/wallet/IPublicSocialRecovery.sol",
   "abi": [
     {
       "inputs": [

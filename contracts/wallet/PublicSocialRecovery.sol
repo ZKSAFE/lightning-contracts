@@ -30,6 +30,7 @@ contract PublicSocialRecovery {
 
     constructor() {}
 
+    //msg.sender MUST be ISmartWallet
     function setGroup(
         address[] calldata guardians,
         uint8 needGuardiansNum

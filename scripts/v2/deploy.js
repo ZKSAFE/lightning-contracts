@@ -15,73 +15,66 @@ async function main() {
 	const chainId = (await provider.getNetwork()).chainId
 	console.log('chainId:', chainId)
 
-	let getGasPrice = await provider.getGasPrice()
-	console.log('getGasPrice:', getGasPrice)
-	getGasPrice = getGasPrice.add(getGasPrice.div(2))
-
 	const chainInfo = chainInfos[chainId]
 	console.log(chainInfo)
 
-	const needUSD = 1
-
-	//pay $1 to activate AdminWallet
-	const ERC20 = await ethers.getContractFactory('MockERC20')
-	let usd = ERC20.attach(Object.values(chainInfo.USDAddrs)[0])
-	let usdBalance = await usd.balanceOf(signer.address)
-	let decimals = await usd.decimals()
-	console.log(await usd.symbol() + ' balance:', d(usdBalance, decimals))
-	if (usdBalance.lt(m(needUSD, decimals))) {
-		console.log("need $" + needUSD + ' of ' + Object.keys(chainInfo.USDAddrs)[0])
-		return
-	}
-
-	const BundlerManager = await ethers.getContractFactory('BundlerManager')
-	let bundlerManager = await BundlerManager.deploy()
-	await bundlerManager.deployed()
-	console.log('BundlerManagerAddr:', bundlerManager.address)
-
-	const WalletFactory = await ethers.getContractFactory('WalletFactory')
-	let factory = await WalletFactory.deploy(Object.values(chainInfo.USDAddrs), needUSD)
-	await factory.deployed()
-	console.log('WalletFactoryAddr:', factory.address)
+	const guardians = [
+		'0xE44081Ee2D0D4cbaCd10b44e769A14Def065eD4D', 
+		'0x46b6F87DeBD8f7607d00Df47C31D2dC6D9999999',
+		'0x19f43E8B016a2d38B483aE9be67aF924740ab893',
+	]
+	const needGuardiansNum = 2
+	const Deployer = await ethers.getContractFactory('Deployer')
+	let deployer = await Deployer.deploy(guardians, needGuardiansNum)
+	console.log('DeployerAddr:', deployer.address)
+	await deployer.deployed()
 
 	const QuoterV3 = await ethers.getContractFactory('QuoterV3')
 	let quoterV3 = await QuoterV3.deploy(chainInfo.PoolFactoryAddr, chainInfo.WETHAddr)
 	await quoterV3.deployed()
 	console.log('QuoterV3Addr:', quoterV3.address)
 
-	const Multicall = await ethers.getContractFactory('Multicall')
-	let multicall = await Multicall.deploy()
-	await multicall.deployed()
-	console.log('MulticallAddr:', multicall.address)
+	// const Deployer = await ethers.getContractFactory('Deployer')
+	// const deployer = Deployer.attach('0x496e4046d0d6ead8c860fe1f76b8c76a916bee3e')
 
+	console.log('BundlerManagerAddr:', await deployer.bundlerManagerAddr())
+	console.log('MulticallAddr:', await deployer.multicallAddr())
+
+	const bundlerAddr = await deployer.bundlerAddr()
+	console.log('BundlerAddr:', bundlerAddr)
 	const Bundler = await ethers.getContractFactory('Bundler')
-	let bundler = Bundler.attach(await bundlerManager.bundler())
-	console.log('BundlerAddr:', bundler.address)
+	const bundler = Bundler.attach(bundlerAddr)
 
+	const walletFactoryAddr = await deployer.walletFactoryAddr()
+	console.log('WalletFactoryAddr:', walletFactoryAddr)
+	const WalletFactory = await ethers.getContractFactory('WalletFactory')
+	const factory = WalletFactory.attach(walletFactoryAddr)
+
+	const ERC20 = await ethers.getContractFactory('ERC20')
+
+	//deploy admin wallet
 	console.log('AdminUUID:', chainInfo.AdminUUID)
 	let uuidBytes32 = uuidToBytes32(chainInfo.AdminUUID)
 	let predictedAddr = await factory.computeWalletAddr(uuidBytes32)
-	await (await usd.transfer(predictedAddr, m(needUSD, decimals))).wait()
-	console.log('deposit $1 to predictedAddr:', predictedAddr)
 
-	let tx = await (await factory.createWallet(
-		uuidBytes32, signer.address, bundler.address)).wait()
-	let walletAddr
-	for (let event of tx.events) {
-		if (event.address == factory.address) {
-			if (event.eventSignature == 'WalletCreated(address,address,address)') {
-				walletAddr = event.args[0]
-				break
-			}
-		}
-	}
-	console.log('AdminWalletAddr:', walletAddr)
-	
 	let callArr = []
 	let to = '0x'
 	let value = 0
 	let data = '0x'
+
+	to = factory.address
+	data = WalletFactory.interface.encodeFunctionData('createWallet(bytes32,address,address)',
+		[uuidBytes32, accounts[0].address, bundler.address])
+	callArr.push({ to, value, data })
+
+	await bundler.atomCall(encodeAtomCallBytes(callArr))
+	console.log('AdminWalletAddr:', predictedAddr)
+
+	//approve
+	callArr = []
+	to = '0x'
+	value = 0
+	data = '0x'
 	for (let USDAddr of Object.values(chainInfo.USDAddrs)) {
 		to = USDAddr
 		value = 0
