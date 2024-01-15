@@ -84,4 +84,12 @@ function decodeChanges(errorStr) {
     return { beforeBalances, afterBalances, startGasleft, gasUse }
 }
 
-module.exports = { ZERO_ADDRESS, ETH_ADDRESS, MAX_UINT256, m, d, b, n, s, delay, balanceStr, decodeChanges }
+function convertToHex(str) {
+    var hex = '0x';
+    for(var i=0;i<str.length;i++) {
+        hex += ''+str.charCodeAt(i).toString(16);
+    }
+    return hex;
+}
+
+module.exports = { ZERO_ADDRESS, ETH_ADDRESS, MAX_UINT256, m, d, b, n, s, delay, balanceStr, decodeChanges, convertToHex }
