@@ -12,7 +12,7 @@ contract ERC721Insc is ERC721Enumerable, IERC721Inscription {
     using Address for address;
     using Strings for uint;
 
-    mapping (string => bytes) public deployInfo;
+    mapping (string => bytes) public inscInfo;
 
     constructor(
         string memory p,
@@ -21,16 +21,16 @@ contract ERC721Insc is ERC721Enumerable, IERC721Inscription {
         uint64 max,
         uint64 lim
     ) ERC721(p, tick) {
-        deployInfo["p"] = abi.encodePacked(p);
-        deployInfo["op"] = abi.encodePacked(op);
-        deployInfo["tick"] = abi.encodePacked(tick);
-        deployInfo["max"] = abi.encodePacked(max);
-        deployInfo["lim"] = abi.encodePacked(lim);
+        inscInfo["p"] = abi.encodePacked(p);
+        inscInfo["op"] = abi.encodePacked(op);
+        inscInfo["tick"] = abi.encodePacked(tick);
+        inscInfo["max"] = abi.encodePacked(max);
+        inscInfo["lim"] = abi.encodePacked(lim);
         
-        deployInfo["mintHash"] = abi.encodePacked(keccak256(
+        inscInfo["mintHash"] = abi.encodePacked(keccak256(
             bytes(string.concat('{"p":"', p, '","op":"mint","tick":"', tick, '","amt":"', uint(lim).toString(), '"}'))
         ));
-        deployInfo["transferHash"] = abi.encodePacked(keccak256(
+        inscInfo["transferHash"] = abi.encodePacked(keccak256(
             bytes(string.concat('{"p":"', p, '","op":"transfer","tick":"', tick, '","amt":"', uint(lim).toString(), '"}'))
         )); 
 
@@ -38,11 +38,11 @@ contract ERC721Insc is ERC721Enumerable, IERC721Inscription {
     }
 
     function inscribe(address to, bytes calldata data) public {
-        if (keccak256(data) == bytes32(deployInfo["mintHash"])) {
+        if (keccak256(data) == bytes32(inscInfo["mintHash"])) {
             _mint(to, totalSupply() + 1);
-            require(totalSupply() <= uint64(bytes8(deployInfo["max"])) / uint64(bytes8(deployInfo["lim"])), "ERC721Insc: exceeded max supply");
+            require(totalSupply() <= uint64(bytes8(inscInfo["max"])) / uint64(bytes8(inscInfo["lim"])), "ERC721Insc: exceeded max supply");
 
-        } else if (keccak256(data) == bytes32(deployInfo["transferHash"])) {
+        } else if (keccak256(data) == bytes32(inscInfo["transferHash"])) {
             uint tokenId = tokenOfOwnerByIndex(msg.sender, 0);
             transferFrom(msg.sender, to, tokenId);
 
@@ -58,11 +58,11 @@ contract ERC721Insc is ERC721Enumerable, IERC721Inscription {
 
         string memory svg = string.concat(
             '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base{fill:green;font-family:Monospace;font-size:18px;}</style><rect width="100%" height="100%" fill="black"/><text x="60" y="100" class="base">{</text><text x="90" y="130" class="base">"p":"',
-            string(deployInfo["p"]), 
+            string(inscInfo["p"]), 
             '",</text><text x="90" y="160" class="base">"op":"mint",</text><text x="90" y="190" class="base">"tick":"',
-            string(deployInfo["tick"]),
+            string(inscInfo["tick"]),
             '",</text><text x="90" y="220" class="base">"amt":"',
-            uint(uint64(bytes8(deployInfo["lim"]))).toString(),
+            uint(uint64(bytes8(inscInfo["lim"]))).toString(),
             '"</text><text x="60" y="250" class="base">}</text></svg>'
         );
         // return string.concat("data:image/svg+xml;base64,", Base64.encode(bytes(svg)));

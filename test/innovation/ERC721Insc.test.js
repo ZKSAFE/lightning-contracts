@@ -22,11 +22,11 @@ describe('ERC721Insc.test', function () {
         console.log('name:', await erc721Insc.name())
         console.log('symbol:', await erc721Insc.symbol())
         console.log('')
-        console.log('p:', utils.toUtf8String(await erc721Insc.deployInfo('p')))
-        console.log('op:', utils.toUtf8String(await erc721Insc.deployInfo('op')))
-        console.log('tick:', utils.toUtf8String(await erc721Insc.deployInfo('tick')))
-        console.log('max:', parseInt(await erc721Insc.deployInfo('max')))
-        console.log('lim:', parseInt(await erc721Insc.deployInfo('lim')))
+        console.log('p:', utils.toUtf8String(await erc721Insc.inscInfo('p')))
+        console.log('op:', utils.toUtf8String(await erc721Insc.inscInfo('op')))
+        console.log('tick:', utils.toUtf8String(await erc721Insc.inscInfo('tick')))
+        console.log('max:', parseInt(await erc721Insc.inscInfo('max')))
+        console.log('lim:', parseInt(await erc721Insc.inscInfo('lim')))
 
         const ERC20Insc = await ethers.getContractFactory('ERC20Insc')
         erc20Insc = await ERC20Insc.deploy(erc721Insc.address)
@@ -62,7 +62,7 @@ describe('ERC721Insc.test', function () {
         tokenId = await erc721Insc.tokenOfOwnerByIndex(accounts[0].address, 0) 
         await erc721Insc.approve(erc20Insc.address, tokenId)
         await erc20Insc.mint(tokenId)
-        
+
         tokenId = await erc721Insc.tokenOfOwnerByIndex(accounts[0].address, 0) 
         await erc721Insc.approve(erc20Insc.address, tokenId)
         await erc20Insc.mint(tokenId)
@@ -81,7 +81,7 @@ describe('ERC721Insc.test', function () {
     })
 
     async function print() {
-        let lim = parseInt(await erc721Insc.deployInfo('lim'))
+        let lim = parseInt(await erc721Insc.inscInfo('lim'))
         let tickNum = n(await erc721Insc.balanceOf(accounts[0].address))
         for (let i=0; i<tickNum; i++) {
             let tokenId = await erc721Insc.tokenOfOwnerByIndex(accounts[0].address, i)

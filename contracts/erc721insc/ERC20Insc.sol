@@ -14,11 +14,11 @@ contract ERC20Insc is ERC20 {
 
     function mint(uint tokenId) public {
         insc.transferFrom(msg.sender, address(this), tokenId);
-        _mint(msg.sender, uint(uint64(bytes8(insc.deployInfo("lim")))) * 10 ** decimals());
+        _mint(msg.sender, uint(uint64(bytes8(insc.inscInfo("lim")))) * 10 ** decimals());
     }
 
     function burn(uint amount) public virtual {
-        uint lim = uint(uint64(bytes8(insc.deployInfo("lim"))) * 10 ** uint(decimals()));
+        uint lim = uint(uint64(bytes8(insc.inscInfo("lim"))) * 10 ** uint(decimals()));
         require(amount % lim == 0 && amount >= lim, "ERC20Insc: amount must be divisible by lim");
 
         _burn(msg.sender, amount);
