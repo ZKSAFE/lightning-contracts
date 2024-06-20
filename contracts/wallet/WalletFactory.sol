@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import "./SmartWallet.sol"; //createWallet gas used: 2185288
-import "./SmartWalletV2.sol"; //createWallet gas used: 1431023
+// import "./SmartWalletV2.sol"; //createWallet gas used: 1431023
+import "./SmartWalletV3.sol";
 // import "hardhat/console.sol";
 
 contract WalletFactory {
@@ -34,7 +35,7 @@ contract WalletFactory {
      * @param bundler Bundler contract address
      */
     function createWallet(bytes32 salt, address walletOwner, address bundler) public onlyOwner returns (address) {
-        SmartWalletV2 wallet = new SmartWalletV2{salt: salt}();
+        SmartWalletV3 wallet = new SmartWalletV3{salt: salt}();
 
         wallet.init(walletOwner, bundler);
         
@@ -53,7 +54,7 @@ contract WalletFactory {
                             bytes1(0xff),
                             address(this),
                             salt,
-                            keccak256(type(SmartWalletV2).creationCode)
+                            keccak256(type(SmartWalletV3).creationCode)
                         )
                     )
                 )

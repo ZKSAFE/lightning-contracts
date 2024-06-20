@@ -1,0 +1,36 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Time",
+  "sourceName": "contracts/help/Time.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "currBlockNum",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nextBlock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f80fd5b5060868061001b5f395ff3fe6080604052348015600e575f80fd5b50600436106030575f3560e01c8063347866c914603457806383788fce146047575b5f80fd5b4360405190815260200160405180910390f35b604e435f55565b00fea26469706673582212204ed93b1e4bf3250bf49b50fc44f1c8f9443149235b5163fb9aadd635cf62b93264736f6c63430008180033",
+  "deployedBytecode": "0x6080604052348015600e575f80fd5b50600436106030575f3560e01c8063347866c914603457806383788fce146047575b5f80fd5b4360405190815260200160405180910390f35b604e435f55565b00fea26469706673582212204ed93b1e4bf3250bf49b50fc44f1c8f9443149235b5163fb9aadd635cf62b93264736f6c63430008180033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
